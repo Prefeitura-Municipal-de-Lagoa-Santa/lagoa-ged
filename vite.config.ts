@@ -8,7 +8,13 @@ import { defineConfig } from 'vite';
 export default defineConfig({
     plugins: [
         laravel({
-            input: ['resources/js/app.ts'],
+            input: [
+                'resources/js/app.ts',
+                'resources/assets/css/style.css',
+                'resources/assets/js/script.js',
+                'resources/assets/js/layout-tab.js', // ou compact.js / horizontal.js
+                'resources/assets/js/theme.js',
+            ],
             ssr: 'resources/js/ssr.ts',
             refresh: true,
         }),
@@ -25,6 +31,7 @@ export default defineConfig({
     resolve: {
         alias: {
             '@': path.resolve(__dirname, './resources/js'),
+            '@assets': path.resolve(__dirname, './resources/assets'),
             'ziggy-js': resolve(__dirname, 'vendor/tightenco/ziggy'),
         },
     },
