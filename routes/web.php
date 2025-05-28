@@ -9,15 +9,11 @@ use Inertia\Inertia;
 })->name('home');*/
 
 Route::middleware(['auth'])->group(function () {
-     Route::redirect('/', '/dashboard');/*function (): RedirectResponse {
-        // Se o usuário chegou até aqui, o middleware 'auth' já confirmou que ele está logado.
-        // Portanto, redirecionamos para o dashboard.
-        return redirect()->route('dashboard');
-    })->name('home');*/
+     Route::redirect('/', '/dashboard');
     
     Route::get('/dashboard', function () {
         return Inertia::render('Dashboard');
-    })->middleware(['auth', 'verified'])->name('dashboard');
+    })->middleware(['verified'])->name('dashboard');
 
     require __DIR__ . '/settings.php';
 });
