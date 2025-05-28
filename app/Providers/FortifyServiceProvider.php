@@ -1,0 +1,88 @@
+<?php
+
+namespace App\Providers;
+
+use App\Actions\Fortify\CreateNewUser;
+use App\Actions\Fortify\ResetUserPassword;
+use App\Actions\Fortify\UpdateUserPassword;
+use App\Actions\Fortify\UpdateUserProfileInformation;
+use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\ServiceProvider;
+use Illuminate\Support\Str;
+use Laravel\Fortify\Fortify;
+use Laravel\Fortify\Features as FortifyFeatures; // Adicione este use para Features
+
+class FortifyServiceProvider extends ServiceProvider
+{
+    /**
+     * Register any application services.
+     */
+    public function register(): void
+    {
+        //
+    }
+
+    /**
+     * Bootstrap any application services.
+     */
+    public function boot(): void
+    {
+        //dd('FortifyServiceProvider boot() method ESTÁ SENDO EXECUTADO');
+        // Actions padrão do Fortify (mantenha estas linhas)
+        Fortify::createUsersUsing(CreateNewUser::class);
+        Fortify::updateUserProfileInformationUsing(UpdateUserProfileInformation::class);
+        Fortify::updateUserPasswordsUsing(UpdateUserPassword::class);
+        Fortify::resetUserPasswordsUsing(ResetUserPassword::class);
+
+        // --- ADICIONE AS DEFINIÇÕES DE VIEW DO INERTIA AQUI ---
+        Fortify::loginView(function () {
+            return inertia('auth/Login'); // Ex: resources/js/Pages/Auth/Login.vue
+        });
+
+        Fortify::registerView(function () {
+            return inertia('auth/Register'); // Ex: resources/js/Pages/Auth/Register.vue
+        });
+
+        Fortify::requestPasswordResetLinkView(function () {
+            return inertia('auth/ForgotPassword'); // Ex: resources/js/Pages/Auth/ForgotPassword.vue
+        });
+
+        Fortify::resetPasswordView(function (Request $request) {
+            return inertia('auth/ResetPassword', ['token' => $request->route('token')]); // Ex: resources/js/Pages/Auth/ResetPassword.vue
+        });
+        
+        // Verifique se o feature está habilitado no config/fortify.php
+        //if (Fortify::enabled(FortifyFeatures::emailVerification())) {
+            //Fortify::verifyEmailView(function () {
+                //return inertia('Auth/VerifyEmail'); // Ex: resources/js/Pages/Auth/VerifyEmail.vue
+            //});
+        //}
+
+        // if (Fortify::enabled(FortifyFeatures::confirmPasswords())) {
+        //     Fortify::confirmPasswordView(function () {
+        //         return inertia('Auth/ConfirmPassword');
+        //     });
+        // }
+
+        // if (Fortify::enabled(FortifyFeatures::twoFactorAuthentication())) {
+        //     Fortify::twoFactorChallengeView(function () {
+        //         return inertia('Auth/TwoFactorChallenge');
+        //     });
+        // }
+        // --- FIM DAS DEFINIÇÕES DE VIEW DO INERTIA ---
+
+
+        // Rate limiters padrão do Fortify (mantenha estas seções)
+        RateLimiter::for('login', function (Request $request) {
+            $throttleKey = Str::transliterate(Str::lower($request->input(Fortify::username())).'|'.$request->ip());
+
+            return Limit::perMinute(5)->by($throttleKey);
+        });
+
+        RateLimiter::for('two-factor', function (Request $request) {
+            return Limit::perMinute(5)->by($request->session()->get('login.id'));
+        });
+    }
+}
