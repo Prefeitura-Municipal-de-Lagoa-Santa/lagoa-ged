@@ -15,7 +15,7 @@ return [
     |
     */
 
-    'default' => env('CACHE_STORE', 'database'),
+    'default' => env('CACHE_STORE', 'mongodb'),
 
     /*
     |--------------------------------------------------------------------------
@@ -32,6 +32,14 @@ return [
     */
 
     'stores' => [
+
+        'mongodb' => [
+            'driver' => 'mongodb',
+            'connection' => env('DB_CONNECTION', 'mongodb'), // Certifique-se que 'mongodb' é o nome da sua conexão MongoDB em config/database.php
+            'table' => env('DB_CACHE_TABLE', 'cache'), // Nome da collection que será usada para o cache
+            'prefix' => env('CACHE_PREFIX', Str::slug(env('APP_NAME', 'laravel'), '_') . '_cache_'), // Opcional, mas bom ter
+            // 'lock_connection' => env('DB_CACHE_LOCK_CONNECTION'), // Opcional para locks
+        ],
 
         'array' => [
             'driver' => 'array',
