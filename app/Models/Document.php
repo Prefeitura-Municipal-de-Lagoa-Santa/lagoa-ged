@@ -5,7 +5,8 @@ namespace App\Models;
 //use Illuminate\Database\Eloquent\Model;
 use MongoDB\Laravel\Eloquent\Model; // Importe o Model do MongoDB
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\SoftDeletes;
+use MongoDB\Laravel\Eloquent\SoftDeletes;
+use MongoDB\BSON\ObjectId;
 class Document extends Model
 {
     use HasFactory, SoftDeletes; // Use SoftDeletes se necessário
@@ -26,12 +27,16 @@ class Document extends Model
     ];
 
     protected $casts = [
-        'upload_date' => 'date',
-        'uploaded_by' => 'objectid',
-        'metadata' => 'object',
+        'upload_date' => 'datetime',
+        'file_size' => 'integer',
+        'metadata' => 'object', // Ou 'object' dependendo de como você quer acessá-lo
+        'metadata.document_year' => 'integer', // Exemplo de cast para campo aninhado
         'tags' => 'array',
-        'permissions' => 'object',
-        'file_location' => 'object',
+        'permissions' => 'object', // Ou 'object'
+        'permissions.read_group_ids' => 'array',
+        'permissions.write_group_ids' => 'array',
+        'permissions.deny_group_ids' => 'array',
+        'file_location' => 'object', // Ou 'object'
     ];
 
     public function uploader()

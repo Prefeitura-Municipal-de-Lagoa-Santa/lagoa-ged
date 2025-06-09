@@ -2,15 +2,14 @@
 
 namespace App\Models;
 
-//use MongoDB\Laravel\Eloquent\Model; 
-use Illuminate\Database\Eloquent\Model;
+use MongoDB\Laravel\Eloquent\Model; 
+//use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\SoftDeletes;
+use MongoDB\Laravel\Eloquent\SoftDeletes;
 
 class Group extends Model
 {
-    use HasFactory;
-    use SoftDeletes;
+    use HasFactory, SoftDeletes;
 
     protected $fillable = [
         'name',
