@@ -13,7 +13,8 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/dashboard', function () {
         return Inertia::render('Dashboard');
     })->middleware(['verified'])->name('dashboard');
-
+    
+    require __DIR__ . '/documents.php';
 });
 require __DIR__ . '/settings.php';
 
