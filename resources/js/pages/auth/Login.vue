@@ -56,9 +56,7 @@ const submit = () => {
             <div class="grid gap-2">
                 <div class="flex items-center justify-between">
                     <Label for="password" class="text-foreground">Senha</Label>
-                    <TextLink :href="route('password.request')" class="text-sm text-primary hover:underline" tabindex="5">
-                        Esqueceu a Senha?
-                    </TextLink>
+                    
                 </div>
                 <Input
                     id="password"

@@ -2,16 +2,15 @@
 
 namespace App\Providers;
 
-use App\Actions\Fortify\CreateNewUser;
-use App\Actions\Fortify\ResetUserPassword;
-use App\Actions\Fortify\UpdateUserPassword;
-use App\Actions\Fortify\UpdateUserProfileInformation;
+use App\Models\User;
+use Auth;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Str;
 use Laravel\Fortify\Fortify;
+use Illuminate\Support\Facades\Hash;
 
 class FortifyServiceProvider extends ServiceProvider
 {
@@ -28,54 +27,38 @@ class FortifyServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        //dd('FortifyServiceProvider boot() method ESTÁ SENDO EXECUTADO');
-        // Actions padrão do Fortify (mantenha estas linhas)
-        Fortify::createUsersUsing(CreateNewUser::class);
-        Fortify::updateUserProfileInformationUsing(UpdateUserProfileInformation::class);
-        Fortify::updateUserPasswordsUsing(UpdateUserPassword::class);
-        Fortify::resetUserPasswordsUsing(ResetUserPassword::class);
 
-        // --- ADICIONE AS DEFINIÇÕES DE VIEW DO INERTIA AQUI ---
+        Fortify::authenticateUsing(function ($request) {
+            $username = $request->username;
+            $password = $request->password;
+
+            $user = User::where('username', $username)->first();
+
+            if ($user) {
+                if (Hash::check($password, $user->password)) {
+                    Auth::guard('web')->login($user, $request->boolean('remember'));
+                    return Auth::guard('web')->user();
+                }
+            } elseif (!$user) {
+                // Usuário não encontrado no banco de dados local, não permite o login
+                return null;
+
+            }
+
+            $validated = Auth::validate([
+                'samaccountname' => $request->username,
+                'password' => $request->password
+            ]);
+
+            return $validated ? Auth::getLastAttempted() : null;
+        });
+
         Fortify::loginView(function () {
-            return inertia('auth/Login'); // Ex: resources/js/Pages/Auth/Login.vue
-        });
-
-        Fortify::registerView(function () {
-            return inertia('auth/Register'); // Ex: resources/js/Pages/Auth/Register.vue
-        });
-
-        Fortify::requestPasswordResetLinkView(function () {
-            return inertia('auth/ForgotPassword'); // Ex: resources/js/Pages/Auth/ForgotPassword.vue
-        });
-
-        Fortify::resetPasswordView(function (Request $request) {
-            return inertia('auth/ResetPassword', ['token' => $request->route('token')]); // Ex: resources/js/Pages/Auth/ResetPassword.vue
+            return inertia('auth/Login'); 
         });
         
-        // Verifique se o feature está habilitado no config/fortify.php
-        //if (Fortify::enabled(FortifyFeatures::emailVerification())) {
-            //Fortify::verifyEmailView(function () {
-                //return inertia('Auth/VerifyEmail'); // Ex: resources/js/Pages/Auth/VerifyEmail.vue
-            //});
-        //}
-
-        // if (Fortify::enabled(FortifyFeatures::confirmPasswords())) {
-        //     Fortify::confirmPasswordView(function () {
-        //         return inertia('Auth/ConfirmPassword');
-        //     });
-        // }
-
-        // if (Fortify::enabled(FortifyFeatures::twoFactorAuthentication())) {
-        //     Fortify::twoFactorChallengeView(function () {
-        //         return inertia('Auth/TwoFactorChallenge');
-        //     });
-        // }
-        // --- FIM DAS DEFINIÇÕES DE VIEW DO INERTIA ---
-
-
-        // Rate limiters padrão do Fortify (mantenha estas seções)
         RateLimiter::for('login', function (Request $request) {
-            $throttleKey = Str::transliterate(Str::lower($request->input(Fortify::username())).'|'.$request->ip());
+            $throttleKey = Str::transliterate(Str::lower($request->input(Fortify::username())) . '|' . $request->ip());
 
             return Limit::perMinute(5)->by($throttleKey);
         });

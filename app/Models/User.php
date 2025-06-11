@@ -4,15 +4,23 @@ namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use MongoDB\Laravel\Eloquent\Model as Eloquent;
+use MongoDB\Laravel\Eloquent\HybridRelations;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use MongoDB\Laravel\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use MongoDB\Laravel\Eloquent\SoftDeletes;
 
+use LdapRecord\Laravel\Auth\AuthenticatesWithLdap;
+use LdapRecord\Laravel\Auth\LdapAuthenticatable;
+use LdapRecord\Laravel\Auth\HasLdapUser;
 
-class User extends Authenticatable
+
+
+class User extends Authenticatable implements LdapAuthenticatable
 {
     use HasFactory, Notifiable, SoftDeletes;
+    use HybridRelations;
+    use AuthenticatesWithLdap;
 
     /**
      * The attributes that are mass assignable.
