@@ -74,11 +74,11 @@ return [
             'database' => [
                 'model' => App\Models\User::class,
                 'sync_passwords' => false,
-                //'sync_attributes' => [
-                //    'email' => 'userPrincipalName',
-                //    'full_name' => 'cn',
-                //    'username' => 'sAMAccountName',
-                //],
+                'sync_attributes' => [
+                    'email' => 'userPrincipalName',
+                    'full_name' => 'cn',
+                    'username' => 'sAMAccountName',
+                ],
             ],
         ],
 
