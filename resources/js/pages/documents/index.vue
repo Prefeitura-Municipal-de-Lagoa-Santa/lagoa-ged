@@ -120,9 +120,10 @@ const breadcrumbs:BreadcrumbItem[] = [
                                 </span>
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-3 flex items-center justify-end">
-                                <a href="#" target="_blank" class="text-primary hover:text-primary/80" title="Ver"><Eye/></a>
+                                <a :href="route('documents.show', doc.id)" target="_blank" class="text-primary hover:text-primary/80" title="Ver"><Eye/></a>
                                 <a class="text-amber-600 hover:text-amber-600/80" title="Editar"><Pencil/></a>
-                                <button class="text-destructive hover:text-destructive/80" title="Excluir"><Trash/></button>
+                                <button class="text-destructive hover:text-destructive/80" title="Excluir"><Trash/>
+                                </button>
                             </td>
                         </tr>
                     </tbody>
