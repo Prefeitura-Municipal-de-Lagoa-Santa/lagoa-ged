@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, onBeforeUnmount, watch, } from 'vue';
 import { Link, router, Head, usePage } from '@inertiajs/vue3';
-import { CircleUserRoundIcon, File, House, LogOut, Menu, Minus, MoonIcon, Palette, Settings2, Sun, SunMoon, } from 'lucide-vue-next';
+import { CircleUserRoundIcon, File, House, LogOut, Menu, Minus, MoonIcon, Palette, Sun, SunMoon, Headset, MonitorCogIcon, User, Shield, } from 'lucide-vue-next';
 import type { BreadcrumbItemType } from '@/types';
 
 interface Props {
@@ -76,6 +76,35 @@ const logout = () => {
 };
 // --- FIM DA LÓGICA DO DROPDOWN DO USUÁRIO ---
 
+// --- LÓGICA PARA O SUBMENU DE PERMISSÕES ---
+const permissionsSubmenuOpen = ref(false);
+const togglePermissionsSubmenu = () => {
+    // Apenas alterna se a sidebar estiver aberta, ou force abertura se for o clique no item de menu minimizado
+    // Ou seja, se a sidebar estiver minimizada e clicarem em "Permissões" para expandir, ela abre.
+    // Se a sidebar estiver expandida, e clicarem, ela apenas alterna o submenu.
+    if (!sidebarOpen.value) {
+        sidebarOpen.value = true; // Força a abertura da sidebar para exibir o submenu
+        // Pequeno atraso para garantir que a sidebar esteja visível antes de abrir o submenu
+        setTimeout(() => {
+            permissionsSubmenuOpen.value = !permissionsSubmenuOpen.value;
+        }, 300); // Ajuste o tempo se a transição da sidebar for diferente
+    } else {
+        permissionsSubmenuOpen.value = !permissionsSubmenuOpen.value;
+    }
+};
+
+// Fechar submenu se a rota mudar
+router.on('finish', () => {
+    permissionsSubmenuOpen.value = false;
+});
+
+// Fechar submenu se a sidebar for minimizada (em desktop)
+watch(sidebarOpen, (newValue) => {
+    if (!newValue && window.innerWidth >= 1024) { // Checa se está em desktop
+        permissionsSubmenuOpen.value = false;
+    }
+});
+// --- FIM DA LÓGICA PARA O SUBMENU DE PERMISSÕES ---
 
 // --- LÓGICA PARA CLICAR FORA ---
 const handleClickOutsideThemeDropdown = (event: MouseEvent) => {
@@ -84,9 +113,17 @@ const handleClickOutsideThemeDropdown = (event: MouseEvent) => {
     }
 };
 
+const permissionsMenuItemRef = ref<HTMLDivElement | null>(null); // Ref para o item de menu de permissões
+
 const handleClickOutsideUserDropdown = (event: MouseEvent) => {
     if (userDropdownRef.value && !userDropdownRef.value.contains(event.target as Node)) {
         closeUserDropdown(); // Fecha o dropdown do usuário
+    }
+};
+
+const handleClickOutsidePermissionsSubmenu = (event: MouseEvent) => {
+    if (permissionsMenuItemRef.value && !permissionsMenuItemRef.value.contains(event.target as Node)) {
+        permissionsSubmenuOpen.value = false; // Fecha o submenu de permissões
     }
 };
 
@@ -105,6 +142,7 @@ onMounted(() => {
     // Adiciona listeners para clique fora
     document.addEventListener('click', handleClickOutsideThemeDropdown);
     document.addEventListener('click', handleClickOutsideUserDropdown);
+    document.addEventListener('click', handleClickOutsidePermissionsSubmenu);
 });
 
 watch(themeChoice, () => { // Para tema
@@ -118,6 +156,7 @@ onBeforeUnmount(() => {
     // Remove listeners de clique fora
     document.removeEventListener('click', handleClickOutsideThemeDropdown);
     document.removeEventListener('click', handleClickOutsideUserDropdown);
+    document.removeEventListener('click', handleClickOutsidePermissionsSubmenu);
 });
 
 </script>
@@ -181,15 +220,51 @@ onBeforeUnmount(() => {
                         <span v-if="sidebarOpen" class="whitespace-nowrap">Documentos</span>
                         </Link>
                     </li>
+
+                    <li ref="permissionsMenuItemRef">
+                        <button @click="togglePermissionsSubmenu" :title="!sidebarOpen ? 'Permissões' : null" :class="[
+                            'flex items-center p-3 rounded-md transition-colors duration-200 w-full text-left group',
+                            sidebarOpen ? 'space-x-3' : 'justify-center',
+                            // Opcional: Adicione classes de ativo se alguma sub-rota estiver ativa
+                            permissionsSubmenuOpen || route().current('permissions.*') || route().current('roles.*') ? 'bg-cyan-600 text-sidebar-primary-foreground' : 'hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
+                        ]">
+                            <MonitorCogIcon />
+                            <span v-if="sidebarOpen" class="whitespace-nowrap flex-grow">Permissões</span>
+                            <svg v-if="sidebarOpen"
+                                :class="['w-4 h-4 transition-transform duration-200', { 'rotate-90': permissionsSubmenuOpen }]"
+                                viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                stroke-linecap="round" stroke-linejoin="round">
+                                <polyline points="9 18 15 12 9 6"></polyline>
+                            </svg>
+                        </button>
+                        <div v-if="permissionsSubmenuOpen && sidebarOpen" class="ml-4 mt-1 space-y-1">
+                            <Link :href="route('permissions.groups')"
+                                class="flex items-center p-2 rounded-md transition-colors duration-200 group text-sm"
+                                :class="[
+                                    route().current('permissions.groups') ? 'bg-cyan-700 text-sidebar-primary-foreground' : 'hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
+                                ]">
+                            <Shield class="w-4 h-4 mr-2" />
+                            <span>Grupos</span>
+                            </Link>
+                            <Link :href="route('permissions.users')"
+                                class="flex items-center p-2 rounded-md transition-colors duration-200 group text-sm"
+                                :class="[
+                                    route().current('permissions.users') ? 'bg-cyan-700 text-sidebar-primary-foreground' : 'hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
+                                ]">
+                            <User class="w-4 h-4 mr-2" />
+                            <span>Usuários</span>
+                            </Link>
+                        </div>
+                    </li>
                 </ul>
             </nav>
         </aside>
 
-        <div v-if="sidebarOpen" @click="toggleSidebar" class="fixed inset-0 bg-black bg-opacity-50 z-20 lg:hidden">
+        <div v-if="sidebarOpen" @click="toggleSidebar" class="fixed inset-0 bg-opacity-25 z-20 lg:hidden">
         </div>
 
         <div class="flex-1 flex flex-col min-w-0 transition-all duration-300 ease-in-out" :class="{
-            'lg:ml-64': sidebarOpen,    // Margem Desktop: sidebar expandida
+            'lg:ml-64': sidebarOpen,     // Margem Desktop: sidebar expandida
             'lg:ml-20': !sidebarOpen,   // Margem Desktop: sidebar mini/recolhida
             // Em mobile, a sidebar é overlay, então a margem não é alterada aqui.
         }">
@@ -202,8 +277,8 @@ onBeforeUnmount(() => {
 
                 <div v-if="props.breadcrumbs.length > 0"
                     class="hidden lg:flex items-center space-x-1 text-sm text-muted-foreground">
-                    <template v-for="(crumb, index) in props.breadcrumbs" :key="index"> 
-                        <Link v-if="index < props.breadcrumbs.length - 1" :href="crumb.href"
+                    <template v-for="(crumb, index) in props.breadcrumbs" :key="index">
+                        <Link v-if="index < props.breadcrumbs.length - 1 && crumb.href" :href="crumb.href"
                             class="hover:text-foreground transition-colors">
                         {{ crumb.title }}
                         </Link>
@@ -250,14 +325,14 @@ onBeforeUnmount(() => {
                                 class="px-4 py-3 text-sm text-muted-foreground border-b border-border truncate w-full min-w-0">
                                 {{ $page.props.auth.user.email }}
                             </div>
-                            <Link :href="route('profile.edit')"
+                            <a href="https://glpi.lagoasanta.mg.gov.br"
                                 class="block w-full text-left px-4 py-2 text-sm text-foreground hover:bg-muted"
-                                @click="closeUserDropdown">
-                            <div class="flex items-center space-x-2">
-                                <Settings2 />
-                                <span>Configurações</span>
-                            </div>
-                            </Link>
+                                @click="closeUserDropdown" target="_blank">
+                                <div class="flex items-center space-x-2">
+                                    <Headset />
+                                    <span>Suporte</span>
+                                </div>
+                            </a>
                             <form @submit.prevent="logout">
                                 <button type="submit"
                                     class="block w-full text-left px-4 py-2 text-sm text-foreground hover:bg-muted">
