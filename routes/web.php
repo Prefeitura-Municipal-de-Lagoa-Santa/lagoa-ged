@@ -15,7 +15,8 @@ Route::middleware(['auth'])->group(function () {
     })->middleware(['verified'])->name('dashboard');
     
     require __DIR__ . '/documents.php';
+    require __DIR__ . '/permissions.php';
 });
-require __DIR__ . '/settings.php';
+//require __DIR__ . '/settings.php';
 
 require __DIR__ . '/auth.php';
