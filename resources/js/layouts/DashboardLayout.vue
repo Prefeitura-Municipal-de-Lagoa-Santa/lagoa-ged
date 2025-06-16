@@ -238,18 +238,18 @@ onBeforeUnmount(() => {
                             </svg>
                         </button>
                         <div v-if="permissionsSubmenuOpen && sidebarOpen" class="ml-4 mt-1 space-y-1">
-                            <Link :href="route('permissions.groups')"
+                            <Link :href="route('groups.index')"
                                 class="flex items-center p-2 rounded-md transition-colors duration-200 group text-sm"
                                 :class="[
-                                    route().current('permissions.groups') ? 'bg-cyan-700 text-sidebar-primary-foreground' : 'hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
+                                    route().current('groups.index') ? 'bg-cyan-700 text-sidebar-primary-foreground' : 'hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
                                 ]">
                             <Shield class="w-4 h-4 mr-2" />
                             <span>Grupos</span>
                             </Link>
-                            <Link :href="route('permissions.users')"
+                            <Link :href="route('users.index')"
                                 class="flex items-center p-2 rounded-md transition-colors duration-200 group text-sm"
                                 :class="[
-                                    route().current('permissions.users') ? 'bg-cyan-700 text-sidebar-primary-foreground' : 'hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
+                                    route().current('users.index') ? 'bg-cyan-700 text-sidebar-primary-foreground' : 'hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
                                 ]">
                             <User class="w-4 h-4 mr-2" />
                             <span>Usuários</span>

@@ -21,9 +21,16 @@ class GroupSeeder extends Seeder
             // 3. Extrai (plucks) apenas os IDs ('_id' para MongoDB) dos usuários encontrados.
             // O toArray() converte a coleção de IDs em um array simples.
             $memberIds = $users->pluck('_id')->toArray();
+
+            // 2. CONVERTEMOS CADA STRING DE VOLTA PARA UM ObjectId
+            $memberObjectIds = array_map(function ($id) {
+                return new ObjectId($id);
+            }, $memberIds);
+
             Group::create([
                 'name' => 'ADLP',
-                'members' => $memberIds,
+                'description' => 'Atos, Decretos, Leis e Portarias',
+                'user_ids' => $memberObjectIds,
             ]);
         } else {
             // Se não houver usuários suficientes, exibe uma mensagem no console.

@@ -24,6 +24,7 @@ class DocumentController extends Controller
     //exibe documentos
     public function view(Document $document)
     {
+        //dd($document->file_location->path);
         $filePath = $document->file_location->path;
        
         if (!Storage::disk('samba')->exists($filePath)) {
