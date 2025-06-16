@@ -34,7 +34,7 @@ const props = defineProps<Props>();
 const breadcrumbs:BreadcrumbItem[] = [
     { title: 'Pagina Inicial', href: route('dashboard') }, 
     { title: 'Permissões'}, 
-    { title: 'Usuários', href: route('permissions.users') } 
+    { title: 'Usuários', href: route('users.index') } 
 ];
 
 

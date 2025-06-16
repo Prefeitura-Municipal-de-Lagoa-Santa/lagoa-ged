@@ -1,7 +1,7 @@
 <script setup>
-import DashboardLayout from '@/Layouts/DashboardLayout.vue'; // Ajuste o caminho se necessário
+import DashboardLayout from '@/layouts/DashboardLayout.vue'; // Ajuste o caminho se necessário
 import { Head } from '@inertiajs/vue3';
-import { BadgeDollarSign, Banknote, CircleDollarSign, Coins, DollarSign, FileUser, FolderKanbanIcon, HandHeart, Scale } from 'lucide-vue-next';
+import { CircleDollarSign, FileUser, FolderKanbanIcon, HandHeart, Scale } from 'lucide-vue-next';
 
 // Se você estiver usando a forma mais moderna de definir layouts persistentes no app.js
 // ou via defineOptions, você não precisaria importar e envolver aqui.
