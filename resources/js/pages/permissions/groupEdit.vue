@@ -43,7 +43,7 @@ const form = useForm({
     name: props.group.name,
     description: props.group.description,
     // ✅ CORREÇÃO FINAL: Mapear usando 'member.id'
-    member_ids: props.group.members.map(member => member.id),
+    user_ids: props.group.members.map(member => member.id),
 });
 
 const selectedAvailable = ref<string[]>([]);
@@ -51,21 +51,21 @@ const selectedMembers = ref<string[]>([]);
 
 const availableUsers = computed(() => {
     // ✅ CORREÇÃO FINAL: Filtrar usando 'user.id'
-    return props.allUsers.filter(user => !form.member_ids.includes(user.id));
+    return props.allUsers.filter(user => !form.user_ids.includes(user.id));
 });
 
 const groupMembers = computed(() => {
     // ✅ CORREÇÃO FINAL: Filtrar usando 'user.id'
-    return props.allUsers.filter(user => form.member_ids.includes(user.id));
+    return props.allUsers.filter(user => form.user_ids.includes(user.id));
 });
 
 function addMembers() {
-    form.member_ids.push(...selectedAvailable.value);
+    form.user_ids.push(...selectedAvailable.value);
     selectedAvailable.value = [];
 }
 
 function removeMembers() {
-    form.member_ids = form.member_ids.filter(id => !selectedMembers.value.includes(id));
+    form.user_ids = form.user_ids.filter(id => !selectedMembers.value.includes(id));
     selectedMembers.value = [];
 }
 
@@ -136,8 +136,8 @@ function submit() {
                                     </select>
                                 </div>
                             </div>
-                            <div v-if="form.errors.member_ids" class="text-sm text-red-500 mt-2">{{
-                                form.errors.member_ids }}</div>
+                            <div v-if="form.errors.user_ids" class="text-sm text-red-500 mt-2">{{
+                                form.errors.user_ids }}</div>
                         </div>
                     </CardContent>
 
