@@ -85,7 +85,7 @@ const breadcrumbs: BreadcrumbItem[] = [
                                 }}</td>
                             <td
                                 class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-3 flex items-center justify-end">
-                                <a :href="route('groups.edit', g.id)" target="_blank"
+                                <a :href="route('groups.edit', g.id)"
                                     class="text-green-500 hover:text-green-500/60" title="Ver">
                                     <SquarePen />
                                 </a>
