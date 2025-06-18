@@ -51,7 +51,7 @@ const breadcrumbs: BreadcrumbItem[] = [
                     Grupos
                 </h1>
                 <Button as-child>
-                    <Link href="#">
+                    <Link :href="route('groups.create')">
                     <Plus class="mr-2 h-4 w-4" />
                     Novo Grupo
                     </Link>

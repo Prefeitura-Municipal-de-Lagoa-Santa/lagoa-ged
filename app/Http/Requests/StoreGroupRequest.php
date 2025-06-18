@@ -5,7 +5,7 @@ namespace App\Http\Requests;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
-class UpdateGroupRequest extends FormRequest
+class StoreGroupRequest extends FormRequest
 {
     /**
      * Determine if the user is authorized to make this request.
@@ -22,9 +22,6 @@ class UpdateGroupRequest extends FormRequest
      */
     public function rules(): array
     {
-        // this->route('group') pega o modelo 'group' injetado na rota.
-        $group = $this->route('group');
-
         return [
             'name' => [
                 'required',
@@ -32,7 +29,7 @@ class UpdateGroupRequest extends FormRequest
                 'min:2',
                 'max:255',
                 // A lógica para ignorar o grupo atual funciona perfeitamente aqui.
-                Rule::unique('groups', 'name')->ignore($group->_id, '_id')
+                Rule::unique('groups', 'name')
             ],
             'description' => [
                 'required',

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\StoreGroupRequest;
 use App\Models\Group;
 use App\Models\User;
 //use Illuminate\Http\Request;
@@ -9,6 +10,7 @@ use App\Http\Requests\UpdateGroupRequest;
 use Inertia\Inertia;
 use Illuminate\Http\JsonResponse;
 use Redirect;
+use Request;
 
 class GroupController extends Controller
 {
@@ -45,5 +47,29 @@ class GroupController extends Controller
         $group->update($validatedData);
 
         return Redirect::back()->with('success', 'Grupo atualizado com sucesso!');
+    }
+    public function create()
+    {
+        $allUsers = User::query()
+            ->select('_id', 'full_name', 'username', 'email')
+            ->get();
+        //dd($allUsers);
+
+        return Inertia::render('permissions/groupCreate', [
+            'allUsers' => $allUsers,
+        ]);
+    }
+    public function store(StoreGroupRequest $request)
+    {
+        $validatedData = $request->validated();
+
+        Group::create([
+            'name' => $validatedData['name'],
+            'description' => $validatedData['description'],
+            'user_ids' => $validatedData['user_ids'],
+        ]);
+
+        return to_route('groups.index')
+            ->with('flash.success', 'Grupo criado com sucesso!');
     }
 }
