@@ -33,7 +33,7 @@ class AuthenticatedSessionController extends Controller
             'sAMAccountName' => $request->input('username'),
             'password' => $request->input('password'),
         ];
-dd($credentials);
+//dd($credentials);
         if (Auth::attempt($credentials)) {
             $request->authenticate();
             $request->session()->regenerate();

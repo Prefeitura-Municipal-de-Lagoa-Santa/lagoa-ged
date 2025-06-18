@@ -17,16 +17,7 @@ interface User {
     email: string;
 }
 
-// ✅ CORREÇÃO FINAL: A interface espera 'id' (string)
-interface Group {
-    id: string;
-    name: string;
-    description: string;
-    members: User[];
-};
-
 interface Props {
-    group: Group;
     allUsers: User[];
 };
 
@@ -36,14 +27,14 @@ const breadcrumbs = computed<BreadcrumbItem[]>(() => [
     { title: 'Pagina Inicial', href: route('dashboard') },
     { title: 'Permissões' },
     { title: 'Grupos', href: route('groups.index') },
-    { title: props.group.name }
+    { title: 'Novo' }
 ]);
 
 const form = useForm({
-    name: props.group.name,
-    description: props.group.description,
+    name: '',
+    description: '',
     // ✅ CORREÇÃO FINAL: Mapear usando 'member.id'
-    user_ids: props.group.members.map(member => member.id),
+    user_ids: [],
 });
 
 const selectedAvailable = ref<string[]>([]);
@@ -71,7 +62,7 @@ function removeMembers() {
 
 function submit() {
     // ✅ CORREÇÃO FINAL: Usar 'props.group.id' na rota
-    form.put(route('groups.update', { group: props.group.id }), {
+    form.post(route('groups.store'), {
         preserveScroll: true,
         onSuccess: () => { },
     });
@@ -81,13 +72,13 @@ function submit() {
 
 <template>
 
-    <Head :title="`Editar Grupo: ${props.group.name}`" />
+    <Head :title="`Novo Grupo`" />
 
     <DashboardLayout :breadcrumbs="breadcrumbs">
         <div class="container mx-auto py-6 px-4 sm:px-6 lg:px-8">
             <div class="flex flex-col sm:flex-row justify-between items-center mb-6 gap-4">
                 <h1 class="text-2xl md:text-3xl font-semibold text-foreground">
-                    Editar Grupo: {{ props.group.name }}
+                    Novo Grupo
                 </h1>
             </div>
             <form @submit.prevent="submit">
@@ -143,7 +134,7 @@ function submit() {
 
                     <CardFooter class="flex justify-end">
                         <Button type="submit" :disabled="form.processing">
-                            {{ form.processing ? 'Salvando...' : 'Salvar Alterações' }}
+                            {{ form.processing ? 'Salvando...' : 'Salvar' }}
                         </Button>
                     </CardFooter>
                 </Card>

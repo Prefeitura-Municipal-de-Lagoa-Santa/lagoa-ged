@@ -4,7 +4,7 @@ use App\Http\Controllers\DocumentController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
-Route::get(uri: '/documents', action: [DocumentController::class, 'index'])->name(name: 'documents.index');
+Route::get('/documents',  [DocumentController::class, 'index'])->name( 'documents.index');
 Route::get('/documents/{id}/show', [DocumentController::class, 'show'])->name('documents.show');
 Route::get('/documents/{document}/view', [DocumentController::class, 'view'])->name('documents.view');
 //Route::put('users/{user}', [UserController::class, 'update'])->name('users.update');

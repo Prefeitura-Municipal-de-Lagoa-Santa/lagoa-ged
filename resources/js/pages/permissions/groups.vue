@@ -51,7 +51,7 @@ const breadcrumbs: BreadcrumbItem[] = [
                     Grupos
                 </h1>
                 <Button as-child>
-                    <Link href="#">
+                    <Link :href="route('groups.create')">
                     <Plus class="mr-2 h-4 w-4" />
                     Novo Grupo
                     </Link>
@@ -85,7 +85,7 @@ const breadcrumbs: BreadcrumbItem[] = [
                                 }}</td>
                             <td
                                 class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-3 flex items-center justify-end">
-                                <a :href="route('groups.edit', g.id)" target="_blank"
+                                <a :href="route('groups.edit', g.id)"
                                     class="text-green-500 hover:text-green-500/60" title="Ver">
                                     <SquarePen />
                                 </a>

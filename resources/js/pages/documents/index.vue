@@ -106,7 +106,7 @@ const breadcrumbs:BreadcrumbItem[] = [
                         </tr>
 
                         <tr v-for="doc in props.documents.data" :key="doc.id" class="hover:bg-muted/50 transition-colors">
-                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-foreground">{{ doc.title }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-foreground"><a :href="route('documents.show', doc.id)">{{ doc.title }}</a></td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-muted-foreground">
                                 <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full" :class="getTypeBadgeClass(doc.file_extension)">
                                     {{ doc.file_extension }}
@@ -120,10 +120,7 @@ const breadcrumbs:BreadcrumbItem[] = [
                                 </span>
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-3 flex items-center justify-end">
-                                <a :href="route('documents.show', doc.id)" target="_blank" class="text-primary hover:text-primary/80" title="Ver"><Eye/></a>
-                                <a class="text-amber-600 hover:text-amber-600/80" title="Editar"><Pencil/></a>
-                                <button class="text-destructive hover:text-destructive/80" title="Excluir"><Trash/>
-                                </button>
+                                <a :href="route('documents.show', doc.id)" class="text-primary hover:text-primary/80" title="Ver"><Eye/></a>
                             </td>
                         </tr>
                     </tbody>
