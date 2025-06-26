@@ -3,7 +3,7 @@ import DashboardLayout from '@/layouts/DashboardLayout.vue'; // Ajuste o caminho
 import { Head, Link } from '@inertiajs/vue3'; // Adicionado Link para possíveis botões
 import { ref } from 'vue'; // Importar ref para dados reativos
 import { Button } from '@/components/ui/button'; // Supondo que você tenha este componente
-import { Eye, Pencil, Plus, Trash } from 'lucide-vue-next';
+import { SquarePen, UserPlus2, } from 'lucide-vue-next';
 import { BreadcrumbItem } from '@/types';
 
 interface User {
@@ -50,8 +50,8 @@ const breadcrumbs:BreadcrumbItem[] = [
                     Usuários
                 </h1>
                 <Button as-child>
-                    <Link href="#"> <Plus class="mr-2 h-4 w-4"/>
-                        Novo Usuário Local
+                    <Link href="#"> <UserPlus2 class="mr-2 h-4 w-4"/>
+                        Criar Usuário Local
                     </Link>
                 </Button>
             </div>
@@ -69,7 +69,7 @@ const breadcrumbs:BreadcrumbItem[] = [
                     <tbody class="bg-card divide-y divide-border">
                         <tr v-if="props.users.data.length === 0">
                             <td colspan="6" class="px-6 py-12 text-center text-sm text-muted-foreground">
-                                Nenhum grupo encontrado.
+                                Nenhum usuário encontrado.
                             </td>
                         </tr>
 
@@ -78,10 +78,7 @@ const breadcrumbs:BreadcrumbItem[] = [
                             <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-foreground">{{ u.full_name }}</td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-foreground">{{ u.email }}</td>
                             <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-3 flex items-center justify-end">
-                                <a :href="'#'" target="_blank" class="text-primary hover:text-primary/80" title="Ver"><Eye/></a>
-                                <a class="text-amber-600 hover:text-amber-600/80" title="Editar"><Pencil/></a>
-                                <button class="text-destructive hover:text-destructive/80" title="Excluir"><Trash/>
-                                </button>
+                                <a :href="route('users.edit', u.id)" class="text-green-500 hover:text-green-500/60" title="Editar"><SquarePen/></a>
                             </td>
                         </tr>
                     </tbody>

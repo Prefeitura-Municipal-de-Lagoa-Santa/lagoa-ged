@@ -11,6 +11,7 @@ Route::get(uri: '/permissions/groups/{group}/edit', action: [GroupController::cl
 Route::put('/permissions/groups/{group}', [GroupController::class, 'update'])->name('groups.update');
 Route::get('/permissions/groups/create', [GroupController::class, 'create'])->name('groups.create');
 Route::post('/permissions/groups/store', [GroupController::class, 'store'])->name('groups.store');
+Route::post('/permissions/groups/{group}/destroy', [GroupController::class, 'destroy'])->name('groups.destroy');
 
 // Rotas Users
 Route::get(uri: '/permissions/users', action: [UserController::class, 'index'])->name(name: 'users.index');

@@ -21,8 +21,16 @@ class Group extends Model
      * Adiciona o nosso acessor 'members' para que ele seja incluído
      * sempre que o model for convertido para array ou JSON.
      */
-    protected $appends = ['members'];
+    protected $appends = ['members', 'is_protected'];
 
+     protected function getIsProtectedAttribute(): bool
+    {
+        // Defina aqui sua lógica. Pode checar por nome, slug, ou ID.
+        // Esta abordagem permite adicionar mais nomes facilmente no futuro.
+        $protectedNames = ['ADMINISTRADORES'];
+        
+        return in_array(strtoupper($this->name), $protectedNames);
+    }
 
     /**
      * Este é o nosso acessor customizado.

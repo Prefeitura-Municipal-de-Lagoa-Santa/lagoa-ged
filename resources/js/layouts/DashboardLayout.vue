@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, onBeforeUnmount, watch, } from 'vue';
+import { ref, onMounted, onBeforeUnmount, watch, computed } from 'vue';
 import { Link, router, Head, usePage } from '@inertiajs/vue3';
 import { CircleUserRoundIcon, File, House, LogOut, Menu, Minus, MoonIcon, Palette, Sun, SunMoon, Headset, MonitorCogIcon, User, Shield, } from 'lucide-vue-next';
 import type { BreadcrumbItemType } from '@/types';
@@ -9,10 +9,16 @@ interface Props {
 }
 
 const props = withDefaults(defineProps<Props>(), {
-    breadcrumbs: () => [], // Garante que props.breadcrumbs seja sempre um array
+    breadcrumbs: () => [],
 });
 
 const page = usePage();
+
+// --- MENSAGENS FLASH ---
+// Versão final: Apenas lê as props do Inertia.
+const successMessage = computed(() => page.props.flash.success);
+const errorMessage = computed(() => page.props.flash.error);
+// --- FIM DA SEÇÃO DE MENSAGENS ---
 
 // Lógica da Sidebar
 const sidebarOpen = ref(true);
@@ -21,11 +27,11 @@ const toggleSidebar = () => {
 };
 
 // --- LÓGICA DO DROPDOWN DE TEMA ---
-const isDropdownOpen = ref(false); // Para o dropdown de tema
+const isDropdownOpen = ref(false);
 const themeChoice = ref('system');
-const themeSwitcherRef = ref<HTMLDivElement | null>(null); // Ref para o dropdown de tema
+const themeSwitcherRef = ref<HTMLDivElement | null>(null);
 
-const toggleDropdown = () => { // Para o dropdown de tema
+const toggleDropdown = () => {
     isDropdownOpen.value = !isDropdownOpen.value;
 };
 
@@ -79,28 +85,22 @@ const logout = () => {
 // --- LÓGICA PARA O SUBMENU DE PERMISSÕES ---
 const permissionsSubmenuOpen = ref(false);
 const togglePermissionsSubmenu = () => {
-    // Apenas alterna se a sidebar estiver aberta, ou force abertura se for o clique no item de menu minimizado
-    // Ou seja, se a sidebar estiver minimizada e clicarem em "Permissões" para expandir, ela abre.
-    // Se a sidebar estiver expandida, e clicarem, ela apenas alterna o submenu.
     if (!sidebarOpen.value) {
-        sidebarOpen.value = true; // Força a abertura da sidebar para exibir o submenu
-        // Pequeno atraso para garantir que a sidebar esteja visível antes de abrir o submenu
+        sidebarOpen.value = true;
         setTimeout(() => {
             permissionsSubmenuOpen.value = !permissionsSubmenuOpen.value;
-        }, 300); // Ajuste o tempo se a transição da sidebar for diferente
+        }, 300);
     } else {
         permissionsSubmenuOpen.value = !permissionsSubmenuOpen.value;
     }
 };
 
-// Fechar submenu se a rota mudar
 router.on('finish', () => {
     permissionsSubmenuOpen.value = false;
 });
 
-// Fechar submenu se a sidebar for minimizada (em desktop)
 watch(sidebarOpen, (newValue) => {
-    if (!newValue && window.innerWidth >= 1024) { // Checa se está em desktop
+    if (!newValue && window.innerWidth >= 1024) {
         permissionsSubmenuOpen.value = false;
     }
 });
@@ -109,27 +109,26 @@ watch(sidebarOpen, (newValue) => {
 // --- LÓGICA PARA CLICAR FORA ---
 const handleClickOutsideThemeDropdown = (event: MouseEvent) => {
     if (themeSwitcherRef.value && !themeSwitcherRef.value.contains(event.target as Node)) {
-        isDropdownOpen.value = false; // Fecha o dropdown de tema
+        isDropdownOpen.value = false;
     }
 };
 
-const permissionsMenuItemRef = ref<HTMLDivElement | null>(null); // Ref para o item de menu de permissões
+const permissionsMenuItemRef = ref<HTMLDivElement | null>(null);
 
 const handleClickOutsideUserDropdown = (event: MouseEvent) => {
     if (userDropdownRef.value && !userDropdownRef.value.contains(event.target as Node)) {
-        closeUserDropdown(); // Fecha o dropdown do usuário
+        closeUserDropdown();
     }
 };
 
 const handleClickOutsidePermissionsSubmenu = (event: MouseEvent) => {
     if (permissionsMenuItemRef.value && !permissionsMenuItemRef.value.contains(event.target as Node)) {
-        permissionsSubmenuOpen.value = false; // Fecha o submenu de permissões
+        permissionsSubmenuOpen.value = false;
     }
 };
 
 // --- LIFECYCLE HOOKS ---
 onMounted(() => {
-    // Lógica de tema
     const savedChoice = localStorage.getItem('themeUserChoice');
     if (savedChoice && ['light', 'dark', 'system'].includes(savedChoice)) {
         themeChoice.value = savedChoice;
@@ -138,22 +137,17 @@ onMounted(() => {
     }
     applyHtmlTheme();
     updateSystemThemeListener();
-
-    // Adiciona listeners para clique fora
     document.addEventListener('click', handleClickOutsideThemeDropdown);
     document.addEventListener('click', handleClickOutsideUserDropdown);
     document.addEventListener('click', handleClickOutsidePermissionsSubmenu);
 });
 
-watch(themeChoice, () => { // Para tema
+watch(themeChoice, () => {
     updateSystemThemeListener();
 });
 
 onBeforeUnmount(() => {
-    // Limpa listener de tema do SO
     osThemeMediaQuery?.removeEventListener('change', systemThemeChangeListener);
-
-    // Remove listeners de clique fora
     document.removeEventListener('click', handleClickOutsideThemeDropdown);
     document.removeEventListener('click', handleClickOutsideUserDropdown);
     document.removeEventListener('click', handleClickOutsidePermissionsSubmenu);
@@ -168,13 +162,8 @@ onBeforeUnmount(() => {
         <aside :class="[
             'fixed inset-y-0 left-0 z-30 flex flex-col transition-all duration-300 ease-in-out',
             'bg-sidebar text-sidebar-foreground shadow-lg border-r border-sidebar-border',
-            // Largura: Dinâmica em desktop, fixa em mobile quando aberta
-            sidebarOpen ? 'lg:w-64' : 'lg:w-20', // Largura para desktop (expandida vs mini)
-            'w-64', // Largura para mobile quando o overlay está ativo
-
-            // Translação: Controla visibilidade em mobile e garante posição em desktop
-            // Em mobile (<lg): desliza para dentro/fora.
-            // Em desktop (>=lg): fica sempre em translate-x-0 (fixa na esquerda).
+            sidebarOpen ? 'lg:w-64' : 'lg:w-20',
+            'w-64',
             sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0',
         ]">
             <div class="h-16 p-4 border-b border-sidebar-border flex items-center shrink-0"
@@ -225,7 +214,6 @@ onBeforeUnmount(() => {
                         <button @click="togglePermissionsSubmenu" :title="!sidebarOpen ? 'Permissões' : null" :class="[
                             'flex items-center p-3 rounded-md transition-colors duration-200 w-full text-left group',
                             sidebarOpen ? 'space-x-3' : 'justify-center',
-                            // Opcional: Adicione classes de ativo se alguma sub-rota estiver ativa
                             permissionsSubmenuOpen || route().current('permissions.*') || route().current('roles.*') ? 'bg-cyan-600 text-sidebar-primary-foreground' : 'hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
                         ]">
                             <MonitorCogIcon />
@@ -240,17 +228,13 @@ onBeforeUnmount(() => {
                         <div v-if="permissionsSubmenuOpen && sidebarOpen" class="ml-4 mt-1 space-y-1">
                             <Link :href="route('groups.index')"
                                 class="flex items-center p-2 rounded-md transition-colors duration-200 group text-sm"
-                                :class="[
-                                    route().current('groups.index') ? 'bg-cyan-700 text-sidebar-primary-foreground' : 'hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
-                                ]">
+                                :class="[ route().current('groups.index') ? 'bg-cyan-700 text-sidebar-primary-foreground' : 'hover:bg-sidebar-accent hover:text-sidebar-accent-foreground' ]">
                             <Shield class="w-4 h-4 mr-2" />
                             <span>Grupos</span>
                             </Link>
                             <Link :href="route('users.index')"
                                 class="flex items-center p-2 rounded-md transition-colors duration-200 group text-sm"
-                                :class="[
-                                    route().current('users.index') ? 'bg-cyan-700 text-sidebar-primary-foreground' : 'hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
-                                ]">
+                                :class="[ route().current('users.index') ? 'bg-cyan-700 text-sidebar-primary-foreground' : 'hover:bg-sidebar-accent hover:text-sidebar-accent-foreground' ]">
                             <User class="w-4 h-4 mr-2" />
                             <span>Usuários</span>
                             </Link>
@@ -264,9 +248,8 @@ onBeforeUnmount(() => {
         </div>
 
         <div class="flex-1 flex flex-col min-w-0 transition-all duration-300 ease-in-out" :class="{
-            'lg:ml-64': sidebarOpen,     // Margem Desktop: sidebar expandida
-            'lg:ml-20': !sidebarOpen,   // Margem Desktop: sidebar mini/recolhida
-            // Em mobile, a sidebar é overlay, então a margem não é alterada aqui.
+            'lg:ml-64': sidebarOpen,
+            'lg:ml-20': !sidebarOpen,
         }">
             <header
                 class="h-16 bg-card text-card-foreground shadow-md flex items-center justify-between px-6 z-10 shrink-0">
@@ -348,6 +331,13 @@ onBeforeUnmount(() => {
             </header>
 
             <main class="flex-1 p-6 overflow-y-auto bg-background">
+                <div v-if="successMessage" class="w-fit max-w-lg mx-auto mb-4 rounded-full bg-green-100 px-6 py-2 text-sm font-medium text-green-800 shadow-lg">
+                    {{ successMessage }}
+                </div>
+                <div v-if="errorMessage" class="w-fit max-w-lg mx-auto mb-4 rounded-full bg-red-100 px-6 py-2 text-sm font-medium text-red-800 shadow-lg">
+                    {{ errorMessage }}
+                </div>
+
                 <slot />
             </main>
         </div>

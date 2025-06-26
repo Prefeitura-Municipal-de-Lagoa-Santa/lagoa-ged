@@ -40,6 +40,24 @@ class User extends Authenticatable implements LdapAuthenticatable
         'domain',
     ];
 
+    protected $appends = ['is_protected','is_ldap'];
+
+    protected function getIsProtectedAttribute(): bool
+    {
+        // Defina aqui sua lógica. Pode checar por nome, slug, ou ID.
+        // Esta abordagem permite adicionar mais nomes facilmente no futuro.
+        $protectedUsernames = ['ADMIN'];
+        
+        return in_array(strtoupper($this->username), $protectedUsernames);
+    }
+
+    protected function getIsLdapAttribute(): bool
+    {
+        // Defina aqui sua lógica. Pode checar por nome, slug, ou ID.
+        // Esta abordagem permite adicionar mais nomes facilmente no futuro.
+        return !empty($this->domain);
+    }
+
     /**
      * The attributes that should be hidden for serialization.
      *
