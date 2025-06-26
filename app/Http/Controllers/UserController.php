@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Group;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -51,7 +52,22 @@ class UserController extends Controller
      */
     public function edit(User $user)
     {
-        //
+        $allGroups = Group::query()
+            ->orderBy('name')
+            ->select('_id', 'name')
+            ->get();
+
+        $userGroups = Group::query()
+            ->select('_id', 'name')
+            ->where('user_ids', $user->id)
+            ->get();
+        //dd($groups);
+
+        return Inertia::render('permissions/userEdit', [
+            'user' => $user,
+            'userGroups' => $userGroups,
+            'allGroups' => $allGroups,
+        ]);
     }
 
     /**
@@ -59,7 +75,7 @@ class UserController extends Controller
      */
     public function update(Request $request, User $user)
     {
-        //
+        dd($request);
     }
 
     /**

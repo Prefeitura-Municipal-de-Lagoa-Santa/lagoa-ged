@@ -3,7 +3,7 @@ import DashboardLayout from '@/layouts/DashboardLayout.vue'; // Ajuste o caminho
 import { Head, Link } from '@inertiajs/vue3'; // Adicionado Link para possíveis botões
 import { ref } from 'vue'; // Importar ref para dados reativos
 import { Button } from '@/components/ui/button'; // Supondo que você tenha este componente
-import { Eye, Pencil, Plus, Trash } from 'lucide-vue-next';
+import { Eye, FilePlus, Pencil, Plus, Trash } from 'lucide-vue-next';
 import { BreadcrumbItem } from '@/types';
 
 interface Document {
@@ -80,7 +80,7 @@ const breadcrumbs:BreadcrumbItem[] = [
                     Documentos 
                 </h1>
                 <Button as-child>
-                    <Link href="#"> <Plus class="mr-2 h-4 w-4"/>
+                    <Link href="#"> <FilePlus class="mr-2 h-4 w-4"/>
                         Novo Documento
                     </Link>
                 </Button>

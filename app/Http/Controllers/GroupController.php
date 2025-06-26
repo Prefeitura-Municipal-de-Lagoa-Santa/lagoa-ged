@@ -7,6 +7,7 @@ use App\Models\Group;
 use App\Models\User;
 //use Illuminate\Http\Request;
 use App\Http\Requests\UpdateGroupRequest;
+use Illuminate\Auth\Access\AuthorizationException;
 use Inertia\Inertia;
 use Illuminate\Http\JsonResponse;
 use Redirect;
@@ -72,4 +73,24 @@ class GroupController extends Controller
         return to_route('groups.index')
             ->with('flash.success', 'Grupo criado com sucesso!');
     }
+
+    public function destroy(Group $group)
+    {
+        try {
+            // 1. Tenta autorizar a ação
+            $this->authorize('delete', $group);
+
+        } catch (AuthorizationException $e) {
+            // 2. Se a autorização falhar, a exceção é capturada AQUI.
+            // Em vez de deixar o Laravel mostrar a página 403, nós fazemos nosso próprio redirecionamento.
+            return redirect()->back()->with('error', 'O grupo "' . $group->name . '" não pode ser excluído.');
+        }
+
+        // 3. Se o código chegou até aqui, a autorização passou.
+        $group->delete();
+
+        // E retornamos com a mensagem de sucesso.
+        return redirect()->route('groups.index')->with('success', 'Grupo excluído com sucesso!');
+    }
+
 }

@@ -24,6 +24,10 @@ class FortifyServiceProvider extends ServiceProvider
         //
     }
 
+    protected $policies = [
+        Group::class => GroupPolicy::class, // ✅ ADICIONE ESTA LINHA
+    ];
+
     /**
      * Bootstrap any application services.
      */

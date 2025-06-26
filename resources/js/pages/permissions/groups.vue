@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import DashboardLayout from '@/layouts/DashboardLayout.vue'; // Ajuste o caminho se necessário
-import { Head, Link } from '@inertiajs/vue3'; // Adicionado Link para possíveis botões
+import { Head, Link, router } from '@inertiajs/vue3'; // Adicionado Link para possíveis botões
 import { ref } from 'vue'; // Importar ref para dados reativos
 import { Button } from '@/components/ui/button'; // Supondo que você tenha este componente
-import { Pencil, Plus, SquarePen, Trash } from 'lucide-vue-next';
+import { ListPlus, SquarePen, Trash } from 'lucide-vue-next';
 import { BreadcrumbItem } from '@/types';
 
 interface Group {
@@ -11,6 +11,7 @@ interface Group {
     name: string;
     description: string;
     members: [];
+    is_protected: boolean;
 };
 
 // Interface para o objeto de paginação que o Laravel envia
@@ -37,6 +38,16 @@ const breadcrumbs: BreadcrumbItem[] = [
     { title: 'Grupos', href: route('groups.index') }
 ];
 
+const confirmDelete = (groupId: number) => {
+    // É uma prática essencial pedir confirmação para ações destrutivas!
+    if (confirm('Tem certeza que deseja excluir este grupo? Esta ação não pode ser desfeita.')) {
+        // Usa o router do Inertia para enviar uma requisição POST para a rota de exclusão
+        router.post(route('groups.destroy', groupId), {
+            preserveScroll: true // Opcional: não rola a página para o topo após a exclusão
+        });
+    }
+};
+
 
 </script>
 
@@ -52,7 +63,7 @@ const breadcrumbs: BreadcrumbItem[] = [
                 </h1>
                 <Button as-child>
                     <Link :href="route('groups.create')">
-                    <Plus class="mr-2 h-4 w-4" />
+                    <ListPlus class="mr-2 h-4 w-4" />
                     Novo Grupo
                     </Link>
                 </Button>
@@ -82,14 +93,15 @@ const breadcrumbs: BreadcrumbItem[] = [
                             <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-foreground">{{ g.name }}
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-foreground">{{ g.description
-                                }}</td>
+                            }}</td>
                             <td
                                 class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-3 flex items-center justify-end">
-                                <a :href="route('groups.edit', g.id)"
-                                    class="text-green-500 hover:text-green-500/60" title="Ver">
+                                <a :href="route('groups.edit', g.id)" class="text-green-500 hover:text-green-500/60"
+                                    title="Ver">
                                     <SquarePen />
                                 </a>
-                                <button class="text-destructive hover:text-destructive/80" title="Excluir">
+                                <button @click="confirmDelete(g.id)" v-if="!g.is_protected"
+                                    class="text-destructive hover:text-destructive/80" title="Excluir">
                                     <Trash />
                                 </button>
                             </td>

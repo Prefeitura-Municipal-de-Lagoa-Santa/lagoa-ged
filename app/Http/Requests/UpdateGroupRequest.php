@@ -4,6 +4,7 @@ namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
+use Str;
 
 class UpdateGroupRequest extends FormRequest
 {
@@ -20,6 +21,20 @@ class UpdateGroupRequest extends FormRequest
      *
      * @return array<string, \Illuminate\Contracts\Validation\ValidationRule|array<mixed>|string>
      */
+
+    protected function prepareForValidation(): void
+    {
+        // Verifica se o campo 'name' foi enviado na requisição
+        if ($this->name) {
+            $this->merge([
+                // Pega o valor de 'name', converte para maiúsculas e o substitui na requisição
+                'name' => Str::upper($this->name),
+
+                // Se quisesse fazer o mesmo para a descrição, seria assim:
+                // 'description' => Str::upper($this->description),
+            ]);
+        }
+    }
     public function rules(): array
     {
         // this->route('group') pega o modelo 'group' injetado na rota.
