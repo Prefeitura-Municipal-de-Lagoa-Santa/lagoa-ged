@@ -84,19 +84,19 @@ function submit() {
                     <CardContent class="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div class="gap-2 md:col-span-2">
                             <Label class="h-8" for="name">Nome</Label>
-                            <Input :disabled="props.user.is_ldap" id="name" type="text" v-model="form.full_name" />
+                            <Input :disabled="props.user.is_ldap || props.user.is_protected" id="name" type="text" v-model="form.full_name" />
                             <div v-if="form.errors.full_name" class="text-sm text-red-500">{{ form.errors.full_name }}
                             </div>
                         </div>
                         <div class="grid gap-3">
                             <Label for="username">Usuário</Label>
-                            <Input :disabled="props.user.is_ldap" id="username" type="text" v-model="form.username" />
+                            <Input :disabled="props.user.is_ldap || props.user.is_protected" id="username" type="text" v-model="form.username" />
                             <div v-if="form.errors.username" class="text-sm text-red-500">{{ form.errors.username }}
                             </div>
                         </div>
                         <div class="grid gap-3">
                             <Label for="description">E-mail</Label>
-                            <Input :disabled="props.user.is_ldap" id="description" v-model="form.email" />
+                            <Input :disabled="props.user.is_ldap || props.user.is_protected" id="description" v-model="form.email" />
                             <div v-if="form.errors.email" class="text-sm text-red-500">{{ form.errors.email }}</div>
                         </div>
 
@@ -126,7 +126,7 @@ function submit() {
                     </CardContent>
 
                     <CardFooter class="flex justify-end">
-                        <Button v-if="!props.user.is_protected" type="submit" :disabled="form.processing">
+                        <Button type="submit" :disabled="form.processing">
                             {{ form.processing ? 'Salvando...' : 'Salvar Alterações' }}
                         </Button>
                     </CardFooter>

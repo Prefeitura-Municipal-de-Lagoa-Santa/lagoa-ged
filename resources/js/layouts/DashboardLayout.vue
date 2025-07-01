@@ -14,6 +14,15 @@ const props = withDefaults(defineProps<Props>(), {
 
 const page = usePage();
 
+const can = computed(() => {
+  return (permission) => {
+    // O caminho `page.props.auth.user.permissions` agora existe
+    // e contém os valores booleanos que definimos no back-end.
+    const permissions = page.props.auth?.user?.permissions ?? {};
+    return permissions[permission] ?? false;
+  };
+});
+
 // --- MENSAGENS FLASH ---
 // Versão final: Apenas lê as props do Inertia.
 const successMessage = computed(() => page.props.flash.success);
@@ -210,7 +219,7 @@ onBeforeUnmount(() => {
                         </Link>
                     </li>
 
-                    <li ref="permissionsMenuItemRef">
+                    <li v-if="can('view_any_groups')" ref="permissionsMenuItemRef">
                         <button @click="togglePermissionsSubmenu" :title="!sidebarOpen ? 'Permissões' : null" :class="[
                             'flex items-center p-3 rounded-md transition-colors duration-200 w-full text-left group',
                             sidebarOpen ? 'space-x-3' : 'justify-center',
