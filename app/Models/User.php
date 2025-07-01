@@ -46,9 +46,11 @@ class User extends Authenticatable implements LdapAuthenticatable
     {
         // Defina aqui sua lógica. Pode checar por nome, slug, ou ID.
         // Esta abordagem permite adicionar mais nomes facilmente no futuro.
-        $protectedUsernames = ['ADMIN'];
+        $protectedUsernames = config('permissions.protected_usernames', []);
+
+        $protectedUsernamesUpper = array_map('strtoupper', $protectedUsernames);
         
-        return in_array(strtoupper($this->username), $protectedUsernames);
+        return in_array(strtoupper($this->username), $protectedUsernamesUpper);
     }
 
     protected function getIsLdapAttribute(): bool
@@ -56,6 +58,28 @@ class User extends Authenticatable implements LdapAuthenticatable
         // Defina aqui sua lógica. Pode checar por nome, slug, ou ID.
         // Esta abordagem permite adicionar mais nomes facilmente no futuro.
         return !empty($this->domain);
+    }
+
+    public function group()
+    {
+        return $this->belongsTo(Group::class);
+    }
+
+    public function isAdmin(): bool
+    {
+        // Garante que o usuário tem um grupo antes de tentar acessar o nome
+
+        $adminGroup = Group::where('name', 'ADMINISTRADORES')->first();
+
+        if (!$adminGroup) {
+            return false;
+        }
+
+        if (empty($adminGroup->user_ids) || !is_array($adminGroup->user_ids)) {
+            return false;
+        }
+
+        return in_array($this->_id, $adminGroup->user_ids);
     }
 
     /**

@@ -96,12 +96,12 @@ function submit() {
                     <CardContent class="grid gap-6">
                         <div class="grid gap-2">
                             <Label for="name">Nome</Label>
-                            <Input class="uppercase" id="name" type="text" v-model="form.name" />
+                            <Input :disabled="props.group.is_protected" class="uppercase" id="name" type="text" v-model="form.name" />
                             <div v-if="form.errors.name" class="text-sm text-red-500">{{ form.errors.name }}</div>
                         </div>
                         <div class="grid gap-2">
                             <Label for="description">Descrição</Label>
-                            <Textarea id="description" v-model="form.description" />
+                            <Textarea :disabled="props.group.is_protected" id="description" v-model="form.description" />
                             <div v-if="form.errors.description" class="text-sm text-red-500">{{ form.errors.description
                                 }}</div>
                         </div>

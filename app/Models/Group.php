@@ -23,13 +23,13 @@ class Group extends Model
      */
     protected $appends = ['members', 'is_protected'];
 
-     protected function getIsProtectedAttribute(): bool
+    protected function getIsProtectedAttribute(): bool
     {
-        // Defina aqui sua lógica. Pode checar por nome, slug, ou ID.
-        // Esta abordagem permite adicionar mais nomes facilmente no futuro.
-        $protectedNames = ['ADMINISTRADORES'];
-        
-        return in_array(strtoupper($this->name), $protectedNames);
+        $protectedNames = config('permissions.protected_groups', []);
+
+        $protectedNamesUpper = array_map('strtoupper', $protectedNames);
+
+        return in_array(needle: strtoupper($this->name), haystack: $protectedNamesUpper);
     }
 
     /**
@@ -59,7 +59,7 @@ class Group extends Model
         return $this->setRelation('members', $members);
     }
 
-    
+
 
     public function readableDocuments()
     {

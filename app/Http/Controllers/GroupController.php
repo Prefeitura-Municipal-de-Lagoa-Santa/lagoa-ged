@@ -39,12 +39,21 @@ class GroupController extends Controller
     }
     public function update(UpdateGroupRequest $request, Group $group)
     {
-        // A validação já aconteceu! Se o código chegou até aqui, os dados são válidos.
-        // Use $request->validated() para pegar apenas os dados que passaram na validação.
+
         $validatedData = $request->validated();
 
-        // Use o método update() do Eloquent para um código mais limpo
-        // (Requer a propriedade $fillable no seu modelo Group)
+        if ($group->is_protected) {
+            $protectedUserNames = config('permissions.protected_usernames', []);
+            $protectedUsers = User::whereIn('username', $protectedUserNames)->pluck('id')->toArray();
+            if (!empty($protectedUsers)) {
+                $currentUserIds = $validatedData['user_ids'] ?? [];
+                $finalUserIds = array_unique(array_merge($currentUserIds, $protectedUsers));
+                $validatedData['user_ids'] = array_values($finalUserIds);
+                
+            }
+        }
+        
+
         $group->update($validatedData);
 
         return Redirect::back()->with('success', 'Grupo atualizado com sucesso!');
