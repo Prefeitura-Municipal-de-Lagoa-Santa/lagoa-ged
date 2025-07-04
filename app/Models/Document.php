@@ -16,7 +16,7 @@ class Document extends Model
         'filename',
         'file_extension',
         'mime_type',
-        'file_size',
+        //'file_size',
         'upload_date',
         'uploaded_by',
         'metadata',
@@ -26,18 +26,14 @@ class Document extends Model
         'file_location',
     ];
 
-    protected $casts = [
-        'upload_date' => 'datetime',
-        'file_size' => 'integer',
-        'metadata' => 'object', // Ou 'object' dependendo de como você quer acessá-lo
-        'metadata.document_year' => 'integer', // Exemplo de cast para campo aninhado
-        'tags' => 'array',
-        'permissions' => 'object', // Ou 'object'
-        'permissions.read_group_ids' => 'array',
-        'permissions.write_group_ids' => 'array',
-        'permissions.deny_group_ids' => 'array',
-        'file_location' => 'object', // Ou 'object'
-    ];
+    //protected $casts = [
+    //'upload_date' => 'datetime',
+    //    'file_size' => 'integer',
+    //    'metadata' => 'array', // Ou 'object' dependendo de como você quer acessá-lo
+    //    'tags' => 'array',
+    //    'permissions' => 'array', // Ou 'object'
+    //    'file_location' => 'array', // Ou 'object'
+    //];
 
     public function uploader()
     {

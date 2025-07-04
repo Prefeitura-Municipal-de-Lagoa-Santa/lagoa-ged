@@ -10,6 +10,7 @@ import {
     DialogTitle,
 } from '@/components/ui/dialog';
 import { ChevronRight, ChevronLeft, ChevronDown, ChevronUp } from 'lucide-vue-next';
+import Label from '../ui/label/Label.vue';
 
 // Interfaces necessárias para as props
 interface Group {

@@ -32,6 +32,11 @@ class GroupSeeder extends Seeder
                 'description' => 'Atos, Decretos, Leis e Portarias',
                 'user_ids' => $memberObjectIds,
             ]);
+            Group::create([
+                'name' => 'ADMINISTRADORES',
+                'description' => 'Administradores do sistema',
+                'user_ids' => $memberObjectIds,
+            ]);
         } else {
             // Se não houver usuários suficientes, exibe uma mensagem no console.
             $this->command->info('Não há usuários suficientes para criar um grupo de teste. Execute o UserSeeder primeiro.');

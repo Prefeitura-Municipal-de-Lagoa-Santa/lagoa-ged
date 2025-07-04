@@ -80,8 +80,8 @@ const breadcrumbs:BreadcrumbItem[] = [
                     Documentos 
                 </h1>
                 <Button as-child>
-                    <Link href="#"> <FilePlus class="mr-2 h-4 w-4"/>
-                        Novo Documento
+                    <Link :href="route('documents.import')"> <FilePlus class="mr-2 h-4 w-4"/>
+                        Importar Documentos
                     </Link>
                 </Button>
             </div>
@@ -92,7 +92,6 @@ const breadcrumbs:BreadcrumbItem[] = [
                         <tr>
                             <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Nome do Documento</th>
                             <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Tipo</th>
-                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Tamanho</th>
                             <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Data de Upload</th>
                             <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Status</th>
                             <th scope="col" class="relative px-6 py-3"><span class="sr-only">Ações</span></th>
@@ -112,7 +111,6 @@ const breadcrumbs:BreadcrumbItem[] = [
                                     {{ doc.file_extension }}
                                 </span>
                             </td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-muted-foreground">{{ doc.file_size }}</td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-muted-foreground">{{ new Date(doc.upload_date).toLocaleDateString() }}</td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm">
                                 <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full" :class="getStatusBadgeClass(doc.status)">
