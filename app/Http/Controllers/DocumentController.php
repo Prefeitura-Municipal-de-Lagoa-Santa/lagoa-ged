@@ -30,22 +30,30 @@ class DocumentController extends Controller
     //exibe documentos
     public function view(Document $document)
     {
-        //dd($document->file_location->path);
-        $filePath = $document->file_location->path;
+        //dd($document->file_location['path']);
+        $filePath = $document->file_location['path'];
+        //dd($filePath);
 
         if (!Storage::disk('samba')->exists($filePath)) {
             abort(404, 'Arquivo não encontrado no compartilhamento.');
         }
 
+        $fileName = $document->filename ?? basename($filePath);
+        $mimeType = $document->mime_type ?? Storage::disk('samba')->mimeType($filePath);
+        //dd($fileName, $mimeType);
+
         // Este é o comando chave: ele retorna o arquivo com os headers corretos para exibição.
-        return Storage::disk('samba')->response($filePath);
+        return Storage::disk('samba')->response($filePath, $fileName,[
+            'Content-Type' => $mimeType,
+            'Content-Disposition' => 'inline; filename="' . $fileName . '"',           
+        ]);
     }
 
-    public function show(Document $id)
+    public function show(Document $document)
     {
-        // Passa os dados do documento para a view.
+        //dd($document);// Passa os dados do documento para a view.
         return Inertia::render('documents/show', [
-            'document' => $id
+            'document' => $document
         ]);
     }
 
