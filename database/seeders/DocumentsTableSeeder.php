@@ -17,14 +17,14 @@ class DocumentsTableSeeder extends Seeder
      */
     public function run(): void
     {
-        $user = User::first();
-        $exampleUserId = $user->_id;
+        //$user = User::first();
+        //$exampleUserId = $user->_id;
         // 2. Simular ObjectIds para grupos (em um cenário real, você buscaria de Models Group)
         // Se você tiver um Model Group, você faria algo como:
         // $group1 = Group::firstOrCreate(['name' => 'Grupo Leitura Teste']);
         // $readGroupId1 = $group1->_id;
-        $readGroupId1 = (string) new ObjectId();
-        $writeGroupId1 = (string) new ObjectId();
+        //$readGroupId1 = (string) new ObjectId();
+        //$writeGroupId1 = (string) new ObjectId();
 
         // Document::create([
         //     'title' => 'DECRETO Nº 2415/2013 - Objeto Confirmado',

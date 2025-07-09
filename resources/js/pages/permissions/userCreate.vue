@@ -5,26 +5,17 @@ import { computed } from 'vue';
 import { BreadcrumbItem } from '@/types';
 import UserForm from '@/components/forms/UserForm.vue'; // Importa o novo componente de formulário
 import { CardHeader, CardTitle } from '@/components/ui/card'; // Importa os componentes de card para o título
+import Password from '../settings/Password.vue';
+
 
 // Interfaces (copiadas para cá para manter as tipagens, pois as props são recebidas aqui)
-interface User {
-    id: string;
-    full_name: string;
-    username: string;
-    email: string;
-    is_protected: boolean;
-    is_ldap: boolean;
-}
-
 interface Group {
     id: string;
     name: string;
 }
 
 interface Props {
-    userGroups: Group[];
-    user: User;
-    allGroups: Group[];
+    allGroups: Group[]; // Em criação, só precisamos de todos os grupos
 }
 
 const props = defineProps<Props>();
@@ -33,49 +24,50 @@ const breadcrumbs = computed<BreadcrumbItem[]>(() => [
     { title: 'Página Inicial', href: route('dashboard') },
     { title: 'Permissões' },
     { title: 'Usuários', href: route('users.index') },
-    { title: props.user.username }
+    { title: 'Criar Novo Usuário' }
 ]);
 
-// O objeto 'form' é definido aqui e passado para o UserForm
+// O objeto 'form' é definido aqui com valores padrão para criação
 const form = useForm({
-    id: props.user.id,
-    full_name: props.user.full_name,
-    email: props.user.email,
-    username: props.user.username,
-    userGroups: props.userGroups, // Certifique-se de que userGroups é um array de objetos Group aqui
+    id: null, // Não há ID para um novo usuário
+    full_name: '',
+    email: '',
+    username: '',
+    password:'',
+    password_confirmation: '',
+    userGroups: [], // Começa sem grupos selecionados
 });
 
-// A função de submissão é definida aqui e passada para o UserForm
+// A função de submissão para criar um novo usuário
 function submitUserForm() {
     form.transform(data => ({
         ...data,
         userGroups: data.userGroups.map(group => group.id), // Envia apenas os IDs dos grupos
-    })).put(route('users.update', { user: props.user.id }), {
+    })).post(route('users.store'), { // Rota para criação de usuário
         preserveScroll: true,
     });
 }
 </script>
 
 <template>
-    <Head :title="`Editar Usuário: ${props.user.full_name}`" />
+    <Head title="Criar Novo Usuário" />
 
     <DashboardLayout :breadcrumbs="breadcrumbs">
         <div class="container mx-auto py-6 px-4 sm:px-6 lg:px-8">
             <div class="flex flex-col sm:flex-row justify-between items-center mb-6 gap-4">
                 <h1 class="text-2xl md:text-3xl font-semibold text-foreground">
-                    Editar Usuário: {{ props.user.full_name }}
+                    Criar Novo Usuário
                 </h1>
             </div>
 
             <CardHeader>
-                <CardTitle>Detalhes do Usuário</CardTitle>
+                <CardTitle>Novo Usuário</CardTitle>
             </CardHeader>
-            
+
             <UserForm 
                 :form="form" 
-                :user="props.user" 
-                :all-groups="props.allGroups" 
-                :is-editing="true" 
+                :user="null" :all-groups="props.allGroups" 
+                :is-editing="false" 
                 @submit="submitUserForm" 
             />
         </div>

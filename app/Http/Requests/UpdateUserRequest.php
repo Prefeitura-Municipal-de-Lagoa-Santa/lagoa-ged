@@ -37,7 +37,7 @@ class UpdateUserRequest extends FormRequest
                 'string',
                 'min:5',
                 'max:64',
-                Rule::unique('user','username')->ignore($this->id, 'id'),
+                Rule::unique('users','username')->ignore($this->id, 'id'),
             ],
              'email' => [
                 'required',
@@ -45,7 +45,7 @@ class UpdateUserRequest extends FormRequest
                 'lowercase',
                 'email',
                 'max:255',
-                Rule::unique('user','email')->ignore($this->id, 'id'),
+                Rule::unique('users','email')->ignore($this->id, 'id'),
             ],
             'userGroups' => 'sometimes|array',
             'userGroups.*' => 'string|exists:mongodb.groups,_id'

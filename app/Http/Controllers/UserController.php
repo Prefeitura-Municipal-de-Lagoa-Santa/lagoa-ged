@@ -2,9 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\StoreUserRequest;
 use App\Http\Requests\UpdateUserRequest;
 use App\Models\Group;
 use App\Models\User;
+use Hash;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Redirect;
@@ -30,15 +32,54 @@ class UserController extends Controller
      */
     public function create()
     {
-        //
+        $allGroups = Group::query()
+            ->orderBy('name')
+            ->select('_id', 'name')
+            ->get();
+       
+        return Inertia::render('permissions/userCreate', [
+            'allGroups' => $allGroups,
+        ]);
     }
 
     /**
      * Store a newly created resource in storage.
      */
-    public function store(Request $request)
+    public function store(StoreUserRequest $request)
     {
-        //
+        $validated = $request->validated();
+
+        // 1. Criar o novo usuário
+        $user = User::create([
+            'full_name' => $validated['full_name'],
+            'username' => $validated['username'],
+            'email' => $validated['email'],
+            'password' => Hash::make($validated['password']), // Criptografa a senha
+        ]);
+        
+        //dd($user->id);
+        // --- INÍCIO DA LÓGICA DE GRUPOS (SEMELHANTE AO UPDATE) ---
+
+        // Pega os IDs dos grupos que vieram do formulário.
+        $newGroupIds = $validated['userGroups'] ?? [];
+
+        // No momento da criação, um novo usuário não é 'is_protected' por padrão.
+        // Se houver uma lógica para novos usuários serem protegidos, ela iria aqui.
+        // Por enquanto, seguimos a lógica de que 'is_protected' só é setado depois ou via outra lógica.
+
+        // Adiciona o novo usuário à lista final e correta de grupos.
+        // A lista `$newGroupIds` contém os grupos selecionados no formulário.
+        if (!empty($newGroupIds)) {
+            // Usa push para adicionar o ID do novo usuário aos arrays 'user_ids' dos grupos.
+            Group::whereIn('id', $newGroupIds)->push('user_ids', $user->id);
+        }
+
+        // --- FIM DA LÓGICA DE GRUPOS ---
+        // Redireciona para a página de edição do novo usuário ou para o índice de usuários.
+        // Passa uma mensagem de sucesso para o frontend.
+        return Redirect::route('users.edit', $user->id)->with('success', 'Usuário criado com sucesso!');
+        // Ou, se preferir ir para a lista de usuários:
+        // return Redirect::route('users.index')->with('success', 'Usuário criado com sucesso!');
     }
 
     /**

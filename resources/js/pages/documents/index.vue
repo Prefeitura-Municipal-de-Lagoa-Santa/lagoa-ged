@@ -151,7 +151,7 @@ const breadcrumbs: BreadcrumbItem[] = [
         <div v-else class="grid gap-4">
           <div v-for="doc in props.documents.data" :key="doc.id"
             class="bg-card p-4 rounded-lg shadow-md border border-border">
-            <a :href="route('documents.show', doc.id)">
+            <a :href="route('documents.view', doc.id)" target="_blank">
               <div class="flex justify-between items-start mb-2">
                 <h3 class="text-lg font-semibold text-foreground break-words pr-2">
                   {{ doc.title }}

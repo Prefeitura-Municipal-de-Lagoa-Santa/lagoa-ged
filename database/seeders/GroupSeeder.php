@@ -33,6 +33,26 @@ class GroupSeeder extends Seeder
                 'user_ids' => $memberObjectIds,
             ]);
             Group::create([
+                'name' => 'RH',
+                'description' => 'Documentos de Recursos Humanos',
+                'user_ids' => null,
+            ]);
+            Group::create([
+                'name' => 'PROJETOS',
+                'description' => 'Documentos de Projetos',
+                'user_ids' => null,
+            ]);
+            Group::create([
+                'name' => 'SAUDE',
+                'description' => 'Documentos de Saúde, Prontuários e Relatórios Médicos',
+                'user_ids' => null,
+            ]);
+            Group::create([
+                'name' => 'FINANCEIRO',
+                'description' => 'Empenhos, Notas Fiscais, Recibos e Documentos Financeiros',
+                'user_ids' => null,
+            ]);
+            Group::create([
                 'name' => 'ADMINISTRADORES',
                 'description' => 'Administradores do sistema',
                 'user_ids' => $memberObjectIds,

@@ -22,9 +22,9 @@ class User extends Authenticatable implements LdapAuthenticatable
     use HybridRelations;
     use AuthenticatesWithLdap;
 
-    protected $primaryKey = '_id';
-    public $incrementing = false;
-    protected $keyType = 'string';
+    //protected $primaryKey = 'id';
+    //public $incrementing = false;
+    //protected $keyType = 'string';
 
     /**
      * The attributes that are mass assignable.
