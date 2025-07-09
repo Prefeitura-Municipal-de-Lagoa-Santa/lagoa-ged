@@ -30,6 +30,7 @@
         "@inertiajs/vue3": "^2.0.0",
         "@tailwindcss/vite": "^4.1.8",
         "@vitejs/plugin-vue": "^5.2.1",
+        "@vueform/multiselect": "^2.6.11",
         "@vueuse/core": "^12.8.2",
         "class-variance-authority": "^0.7.1",
         "clsx": "^2.1.1",
@@ -43,6 +44,7 @@
         "typescript": "^5.2.2",
         "vite": "^6.2.0",
         "vue": "^3.5.13",
+        "vue-pdf-embed": "^2.1.2",
         "ziggy-js": "^2.5.3"
     },
     "optionalDependencies": {

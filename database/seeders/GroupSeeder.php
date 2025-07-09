@@ -32,6 +32,31 @@ class GroupSeeder extends Seeder
                 'description' => 'Atos, Decretos, Leis e Portarias',
                 'user_ids' => $memberObjectIds,
             ]);
+            Group::create([
+                'name' => 'RH',
+                'description' => 'Documentos de Recursos Humanos',
+                'user_ids' => null,
+            ]);
+            Group::create([
+                'name' => 'PROJETOS',
+                'description' => 'Documentos de Projetos',
+                'user_ids' => null,
+            ]);
+            Group::create([
+                'name' => 'SAUDE',
+                'description' => 'Documentos de Saúde, Prontuários e Relatórios Médicos',
+                'user_ids' => null,
+            ]);
+            Group::create([
+                'name' => 'FINANCEIRO',
+                'description' => 'Empenhos, Notas Fiscais, Recibos e Documentos Financeiros',
+                'user_ids' => null,
+            ]);
+            Group::create([
+                'name' => 'ADMINISTRADORES',
+                'description' => 'Administradores do sistema',
+                'user_ids' => $memberObjectIds,
+            ]);
         } else {
             // Se não houver usuários suficientes, exibe uma mensagem no console.
             $this->command->info('Não há usuários suficientes para criar um grupo de teste. Execute o UserSeeder primeiro.');

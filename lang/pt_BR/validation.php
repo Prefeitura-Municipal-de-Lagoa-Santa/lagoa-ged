@@ -158,5 +158,6 @@ return [
         'description' => 'descrição',
         'name'        => 'nome',
         'user_ids'    => 'membros do grupo',
+        'username'   => 'usuário',
     ],
 ];

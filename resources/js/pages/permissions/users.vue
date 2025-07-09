@@ -50,7 +50,7 @@ const breadcrumbs:BreadcrumbItem[] = [
                     Usuários
                 </h1>
                 <Button as-child>
-                    <Link href="#"> <UserPlus2 class="mr-2 h-4 w-4"/>
+                    <Link :href="route('users.create')"> <UserPlus2 class="mr-2 h-4 w-4"/>
                         Criar Usuário Local
                     </Link>
                 </Button>

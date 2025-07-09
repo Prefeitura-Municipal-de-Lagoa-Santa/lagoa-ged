@@ -15,16 +15,13 @@ const props = withDefaults(defineProps<Props>(), {
 const page = usePage();
 
 const can = computed(() => {
-  return (permission) => {
-    // O caminho `page.props.auth.user.permissions` agora existe
-    // e contém os valores booleanos que definimos no back-end.
-    const permissions = page.props.auth?.user?.permissions ?? {};
-    return permissions[permission] ?? false;
-  };
+    return (permission) => {
+        const permissions = page.props.auth?.user?.permissions ?? {};
+        return permissions[permission] ?? false;
+    };
 });
 
 // --- MENSAGENS FLASH ---
-// Versão final: Apenas lê as props do Inertia.
 const successMessage = computed(() => page.props.flash.success);
 const errorMessage = computed(() => page.props.flash.error);
 // --- FIM DA SEÇÃO DE MENSAGENS ---
@@ -33,6 +30,14 @@ const errorMessage = computed(() => page.props.flash.error);
 const sidebarOpen = ref(true);
 const toggleSidebar = () => {
     sidebarOpen.value = !sidebarOpen.value;
+};
+
+// Função para fechar a sidebar em telas pequenas
+const closeSidebarOnSmallScreens = () => {
+    // Verifica se a tela é 'pequena' (menor que o breakpoint 'lg' do Tailwind, que é 1024px)
+    if (window.innerWidth < 1024) {
+        sidebarOpen.value = false;
+    }
 };
 
 // --- LÓGICA DO DROPDOWN DE TEMA ---
@@ -95,20 +100,26 @@ const logout = () => {
 const permissionsSubmenuOpen = ref(false);
 const togglePermissionsSubmenu = () => {
     if (!sidebarOpen.value) {
+        // Se a sidebar estiver fechada e a tela for pequena, abre a sidebar primeiro
         sidebarOpen.value = true;
+        // Pequeno atraso para a transição da sidebar terminar antes de abrir o submenu
         setTimeout(() => {
             permissionsSubmenuOpen.value = !permissionsSubmenuOpen.value;
-        }, 300);
+        }, 300); // Ajuste este tempo se a transição da sidebar for mais longa
     } else {
+        // Se a sidebar já estiver aberta, apenas alterna o submenu
         permissionsSubmenuOpen.value = !permissionsSubmenuOpen.value;
     }
 };
 
+// ** MODIFICAÇÃO CHAVE AQUI: Fechar sidebar e submenu após a navegação **
 router.on('finish', () => {
-    permissionsSubmenuOpen.value = false;
+    closeSidebarOnSmallScreens(); // Fechar a sidebar se for uma tela pequena
+    permissionsSubmenuOpen.value = false; // Garante que o submenu de permissões feche em qualquer navegação
 });
 
 watch(sidebarOpen, (newValue) => {
+    // Se a sidebar for fechada em telas grandes (desktop), feche o submenu
     if (!newValue && window.innerWidth >= 1024) {
         permissionsSubmenuOpen.value = false;
     }
@@ -132,7 +143,10 @@ const handleClickOutsideUserDropdown = (event: MouseEvent) => {
 
 const handleClickOutsidePermissionsSubmenu = (event: MouseEvent) => {
     if (permissionsMenuItemRef.value && !permissionsMenuItemRef.value.contains(event.target as Node)) {
-        permissionsSubmenuOpen.value = false;
+        // Apenas feche se o clique não foi no item do menu e se o submenu está aberto
+        if (permissionsSubmenuOpen.value && sidebarOpen.value) { // Verifica se sidebarOpen também é true
+            permissionsSubmenuOpen.value = false;
+        }
     }
 };
 
@@ -171,23 +185,27 @@ onBeforeUnmount(() => {
         <aside :class="[
             'fixed inset-y-0 left-0 z-30 flex flex-col transition-all duration-300 ease-in-out',
             'bg-sidebar text-sidebar-foreground shadow-lg border-r border-sidebar-border',
-            sidebarOpen ? 'lg:w-64' : 'lg:w-20',
+            sidebarOpen ? 'lg:w-55' : 'lg:w-28',
             'w-64',
             sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0',
         ]">
-            <div class="h-16 p-4 border-b border-sidebar-border flex items-center shrink-0"
+            <div class="p-3 border-b border-sidebar-border flex items-center justify-center shrink-0"
                 :class="sidebarOpen ? 'justify-between' : 'justify-center'">
-                <Link :href="route('dashboard')" class="flex items-center overflow-hidden"
+                <Link :href="route('dashboard')" class="flex flex-col items-center overflow-hidden"
                     :class="sidebarOpen ? 'space-x-3' : 'space-x-0'" title="Painel Principal">
-                <img src="/logo.png" alt="Logo Lagoa GED" class="flex-shrink-0 object-contain"
-                    :class="sidebarOpen ? 'h-8 w-auto' : 'h-9 w-9'">
-                <span v-if="sidebarOpen" class="text-xl font-semibold text-sidebar-foreground whitespace-nowrap">
+                <div class="flex items-center">
+                    <img src="/Brasao Color.png" alt="Logo Lagoa GED" class="flex-shrink-0 object-contain"
+                        :class="sidebarOpen ? 'h-15 w-auto' : 'h-9 w-auto'">
+                    <img src="/logo.png" alt="Logo Lagoa GED" class="flex-shrink-0 object-contain"
+                        :class="sidebarOpen ? 'h-15 w-auto' : 'h-9 w-auto'">
+                </div>
+                <span v-if="sidebarOpen" class="text-2xl font-semibold text-sidebar-foreground whitespace-nowrap">
                     Lagoa GED
                 </span>
                 </Link>
             </div>
 
-            <nav class="flex-1 overflow-y-auto py-4" :class="sidebarOpen ? 'px-4' : 'px-2'">
+            <nav class="flex-1 overflow-y-auto py-4" :class="sidebarOpen ? 'px-5' : 'px-6'">
                 <ul class="space-y-1">
                     <li>
                         <span v-if="sidebarOpen"
@@ -200,20 +218,20 @@ onBeforeUnmount(() => {
                     </li>
                     <li>
                         <Link :href="route('dashboard')" :title="!sidebarOpen ? 'Dashboard' : null" :class="[
-                            'flex items-center p-3 rounded-md transition-colors duration-200 group',
-                            sidebarOpen ? 'space-x-3' : 'justify-center',
-                            route().current('dashboard') ? 'bg-cyan-600 text-sidebar-primary-foreground' : 'hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
-                        ]">
+                                'flex items-center p-3 rounded-md transition-colors duration-200 group',
+                                sidebarOpen ? 'space-x-3' : 'justify-center',
+                                route().current('dashboard') ? 'bg-cyan-600 text-sidebar-primary-foreground' : 'hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
+                            ]">
                         <House />
                         <span v-if="sidebarOpen" class="whitespace-nowrap">Página Inicial</span>
                         </Link>
                     </li>
                     <li>
                         <Link :href="route('documents.index')" :title="!sidebarOpen ? 'Documentos' : null" :class="[
-                            'flex items-center p-3 rounded-md transition-colors duration-200 group',
-                            sidebarOpen ? 'space-x-3' : 'justify-center',
-                            route().current('documents.index') ? 'bg-cyan-600 text-sidebar-primary-foreground' : 'hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
-                        ]">
+                                'flex items-center p-3 rounded-md transition-colors duration-200 group',
+                                sidebarOpen ? 'space-x-3' : 'justify-center',
+                                route().current('documents.index') ? 'bg-cyan-600 text-sidebar-primary-foreground' : 'hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
+                            ]">
                         <File />
                         <span v-if="sidebarOpen" class="whitespace-nowrap">Documentos</span>
                         </Link>
@@ -221,10 +239,10 @@ onBeforeUnmount(() => {
 
                     <li v-if="can('view_any_groups')" ref="permissionsMenuItemRef">
                         <button @click="togglePermissionsSubmenu" :title="!sidebarOpen ? 'Permissões' : null" :class="[
-                            'flex items-center p-3 rounded-md transition-colors duration-200 w-full text-left group',
-                            sidebarOpen ? 'space-x-3' : 'justify-center',
-                            permissionsSubmenuOpen || route().current('permissions.*') || route().current('roles.*') ? 'bg-cyan-600 text-sidebar-primary-foreground' : 'hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
-                        ]">
+                                'flex items-center p-3 rounded-md transition-colors duration-200 w-full text-left group',
+                                sidebarOpen ? 'space-x-3' : 'justify-center',
+                                permissionsSubmenuOpen || route().current('permissions.*') || route().current('roles.*') ? 'bg-cyan-600 text-sidebar-primary-foreground' : 'hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
+                            ]">
                             <MonitorCogIcon />
                             <span v-if="sidebarOpen" class="whitespace-nowrap flex-grow">Permissões</span>
                             <svg v-if="sidebarOpen"
@@ -237,13 +255,13 @@ onBeforeUnmount(() => {
                         <div v-if="permissionsSubmenuOpen && sidebarOpen" class="ml-4 mt-1 space-y-1">
                             <Link :href="route('groups.index')"
                                 class="flex items-center p-2 rounded-md transition-colors duration-200 group text-sm"
-                                :class="[ route().current('groups.index') ? 'bg-cyan-700 text-sidebar-primary-foreground' : 'hover:bg-sidebar-accent hover:text-sidebar-accent-foreground' ]">
+                                :class="[route().current('groups.index') ? 'bg-cyan-700 text-sidebar-primary-foreground' : 'hover:bg-sidebar-accent hover:text-sidebar-accent-foreground']">
                             <Shield class="w-4 h-4 mr-2" />
                             <span>Grupos</span>
                             </Link>
                             <Link :href="route('users.index')"
                                 class="flex items-center p-2 rounded-md transition-colors duration-200 group text-sm"
-                                :class="[ route().current('users.index') ? 'bg-cyan-700 text-sidebar-primary-foreground' : 'hover:bg-sidebar-accent hover:text-sidebar-accent-foreground' ]">
+                                :class="[route().current('users.index') ? 'bg-cyan-700 text-sidebar-primary-foreground' : 'hover:bg-sidebar-accent hover:text-sidebar-accent-foreground']">
                             <User class="w-4 h-4 mr-2" />
                             <span>Usuários</span>
                             </Link>
@@ -257,9 +275,9 @@ onBeforeUnmount(() => {
         </div>
 
         <div class="flex-1 flex flex-col min-w-0 transition-all duration-300 ease-in-out" :class="{
-            'lg:ml-64': sidebarOpen,
-            'lg:ml-20': !sidebarOpen,
-        }">
+                'lg:ml-55': sidebarOpen,
+                'lg:ml-28': !sidebarOpen,
+            }">
             <header
                 class="h-16 bg-card text-card-foreground shadow-md flex items-center justify-between px-6 z-10 shrink-0">
                 <button @click="toggleSidebar" title="Abrir/Fechar Menu"
@@ -340,10 +358,12 @@ onBeforeUnmount(() => {
             </header>
 
             <main class="flex-1 p-6 overflow-y-auto bg-background">
-                <div v-if="successMessage" class="w-fit max-w-lg mx-auto mb-4 rounded-full bg-green-100 px-6 py-2 text-sm font-medium text-green-800 shadow-lg">
+                <div v-if="successMessage"
+                    class="w-fit max-w-lg mx-auto mb-4 rounded-full bg-green-100 px-6 py-2 text-sm font-medium text-green-800 shadow-lg">
                     {{ successMessage }}
                 </div>
-                <div v-if="errorMessage" class="w-fit max-w-lg mx-auto mb-4 rounded-full bg-red-100 px-6 py-2 text-sm font-medium text-red-800 shadow-lg">
+                <div v-if="errorMessage"
+                    class="w-fit max-w-lg mx-auto mb-4 rounded-full bg-red-100 px-6 py-2 text-sm font-medium text-red-800 shadow-lg">
                     {{ errorMessage }}
                 </div>
 

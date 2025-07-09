@@ -17,8 +17,8 @@ Route::post('/permissions/groups/{group}/destroy', [GroupController::class, 'des
 Route::get(uri: '/permissions/users', action: [UserController::class, 'index'])->name(name: 'users.index');
 Route::get(uri: '/permissions/users/{user}/edit', action: [UserController::class, 'edit'])->name(name: 'users.edit');
 Route::put('/permissions/users/{user}', [UserController::class, 'update'])->name('users.update');
-Route::get('/permissions/users/create', [GroupController::class, 'create'])->name('users.create');
-Route::post('/permissions/users/store', [GroupController::class, 'store'])->name('users.store');
+Route::get('/permissions/users/create', [UserController::class, 'create'])->name('users.create');
+Route::post('/permissions/users/store', [UserController::class, 'store'])->name('users.store');
 
 // Permissões específicas
 //Route::get('/users/{user}/permissions', [UserController::class, 'permissions'])users
