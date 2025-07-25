@@ -25,7 +25,9 @@ class FortifyServiceProvider extends ServiceProvider
     }
 
     protected $policies = [
-        Group::class => GroupPolicy::class, // ✅ ADICIONE ESTA LINHA
+        Group::class => GroupPolicy::class, 
+        User::class => UserPolicy::class, 
+        Document::class => DocumentPolicy::class, 
     ];
 
     /**

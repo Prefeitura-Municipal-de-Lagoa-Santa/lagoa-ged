@@ -30,27 +30,27 @@ class GroupSeeder extends Seeder
             Group::create([
                 'name' => 'ADLP',
                 'description' => 'Atos, Decretos, Leis e Portarias',
-                'user_ids' => $memberObjectIds,
+                'user_ids' => [],
             ]);
             Group::create([
                 'name' => 'RH',
                 'description' => 'Documentos de Recursos Humanos',
-                'user_ids' => null,
+                'user_ids' => [],
             ]);
             Group::create([
                 'name' => 'PROJETOS',
                 'description' => 'Documentos de Projetos',
-                'user_ids' => null,
+                'user_ids' => [],
             ]);
             Group::create([
                 'name' => 'SAUDE',
                 'description' => 'Documentos de Saúde, Prontuários e Relatórios Médicos',
-                'user_ids' => null,
+                'user_ids' => [],
             ]);
             Group::create([
                 'name' => 'FINANCEIRO',
                 'description' => 'Empenhos, Notas Fiscais, Recibos e Documentos Financeiros',
-                'user_ids' => null,
+                'user_ids' => [],
             ]);
             Group::create([
                 'name' => 'ADMINISTRADORES',
