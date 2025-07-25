@@ -11,6 +11,7 @@ use Illuminate\Http\Request;
 use Inertia\Inertia; // Importe o Inertia
 use Illuminate\Support\Facades\Auth; // Para obter o usuário logado
 use Log;
+use MongoDB\BSON\ObjectId;
 use SplFileObject;
 use Storage;
 
@@ -45,7 +46,7 @@ class DocumentController extends Controller
         // Este é o comando chave: ele retorna o arquivo com os headers corretos para exibição.
         return Storage::disk('samba')->response($filePath, $fileName,[
             'Content-Type' => $mimeType,
-            'Content-Disposition' => 'inline; filename="' . $fileName . '"',           
+            'Content-Disposition' => 'inline; filename="' . $fileName . '"',
         ]);
     }
 
@@ -73,9 +74,19 @@ class DocumentController extends Controller
         $file = $request->file('csv_file');
         $filePath = $file->getPathname();
 
-        $readGroupIds = array_filter($request->input('read_group_ids', []));
-        $writeGroupIds = array_filter($request->input('write_group_ids', []));
-        $denyGroupIds = array_filter($request->input('deny_group_ids', []));
+        // Recebe os IDs dos grupos como STRINGS do request
+        $readGroupIdsInput = array_filter($request->input('read_group_ids', []));
+        $writeGroupIdsInput = array_filter($request->input('write_group_ids', []));
+
+        // CONVERTE AS STRINGS DE IDS PARA INSTÂNCIAS DE Jenssegers\Mongodb\Eloquent\ObjectId
+        $readGroupIds = collect($readGroupIdsInput)
+                                ->map(function ($id) {
+                                    return new ObjectId($id); // <-- Usando ObjectId do Jenssegers
+                                })->toArray();
+        $writeGroupIds = collect($writeGroupIdsInput)
+                                ->map(function ($id) {
+                                    return new ObjectId($id); // <-- Usando ObjectId do Jenssegers
+                                })->toArray();
 
         $importedCount = 0;
         $skippedCount = 0;
@@ -176,7 +187,6 @@ class DocumentController extends Controller
                 $documentData['permissions'] = [
                     'read_group_ids' => $readGroupIds,
                     'write_group_ids' => $writeGroupIds,
-                    'deny_group_ids' => $denyGroupIds,
                 ];
 
                 $documentData['file_location'] = [
@@ -210,5 +220,4 @@ class DocumentController extends Controller
             return redirect()->back()->with('error', "Ocorreu um erro grave durante a importação. Verifique os logs do servidor.")->with('importErrors', $errors);
         }
     }
-
 }

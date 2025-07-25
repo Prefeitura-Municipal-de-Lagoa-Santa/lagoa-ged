@@ -12,6 +12,7 @@ use Inertia\Inertia;
 use Illuminate\Http\JsonResponse;
 use Redirect;
 use Request;
+use MongoDB\BSON\ObjectId;
 
 class GroupController extends Controller
 {
@@ -52,6 +53,21 @@ class GroupController extends Controller
                 
             }
         }
+
+        // --- Início da modificação para converter IDs para ObjectIds ---
+        if (isset($validatedData['user_ids']) && is_array($validatedData['user_ids'])) {
+            $validatedData['user_ids'] = collect(value: $validatedData['user_ids'])
+                ->map(callback: function ($id) {
+                    // Garante que o ID é uma string válida/convertível antes de criar ObjectId
+                    if (!empty($id)) {
+                        return new ObjectId($id);
+                    }
+                    return null; // Lida com IDs vazios/inválidos, se necessário
+                })
+                ->filter() // Remove quaisquer nulos que resultaram de IDs inválidos
+                ->toArray();
+        }
+        // --- Fim da modificação ---
         
 
         $group->update($validatedData);

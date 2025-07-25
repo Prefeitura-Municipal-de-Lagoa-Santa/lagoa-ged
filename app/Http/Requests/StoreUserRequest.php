@@ -3,7 +3,7 @@
 namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
-use Password;
+use Illuminate\Validation\Rules\Password;
 
 class StoreUserRequest extends FormRequest
 {
@@ -45,13 +45,11 @@ class StoreUserRequest extends FormRequest
             ], // E-mail deve ser único
             'password' => [
                 'required',
-                'string',
-                'min:8',
-                'confirmed',
-                'regex:/[a-z]/',      // letra minúscula
-                'regex:/[A-Z]/',      // letra maiúscula
-                'regex:/[0-9]/',      // número
-                'regex:/[@$!%*#?&]/', // caractere especial
+                Password::min(8)
+                ->letters()
+                ->mixedCase()
+                ->numbers()
+                ->symbols(),
             ], // Senha obrigatória na criação
             'userGroups' => 'sometimes|array',
             'userGroups.*' => 'string|exists:mongodb.groups,_id'

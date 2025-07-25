@@ -33,7 +33,6 @@ const form = useForm({
     csv_file: null,
     read_group_ids: [],
     write_group_ids: [],
-    deny_group_ids: [],
 });
 
 const page = usePage();
@@ -46,7 +45,6 @@ const submit = () => {
             // Resetar IDs de grupo após o sucesso da importação
             form.read_group_ids = [];
             form.write_group_ids = [];
-            form.deny_group_ids = [];
         },
         onError: (errors) => {
             console.error(errors);
@@ -71,7 +69,6 @@ const handleFileUpload = (event: Event) => {
 // Estados para controlar a abertura/fechamento de cada modal
 const isReadModalOpen = ref(false);
 const isWriteModalOpen = ref(false);
-const isDenyModalOpen = ref(false);
 
 // Username para passar para a modal (pode ser o nome do usuário logado, ou um genérico "Documentos")
 const currentUsername = computed(() => page.props.auth?.user?.name || 'Documentos');
@@ -85,7 +82,6 @@ const getGroupsByIds = (ids: string[]): Group[] => {
 // Computed properties para passar para `initialSelectedGroups` da modal
 const initialReadGroups = computed(() => getGroupsByIds(form.read_group_ids));
 const initialWriteGroups = computed(() => getGroupsByIds(form.write_group_ids));
-const initialDenyGroups = computed(() => getGroupsByIds(form.deny_group_ids));
 
 // Handlers para o evento 'confirm' das modais
 // Recebe a lista de grupos selecionados da modal e atualiza o array de IDs do formulário
@@ -97,14 +93,10 @@ const handleWriteGroupsConfirmed = (selected: Group[]) => {
     form.write_group_ids = selected.map(group => group.id);
 };
 
-const handleDenyGroupsConfirmed = (selected: Group[]) => {
-    form.deny_group_ids = selected.map(group => group.id);
-};
 
 // Computed properties para exibir os nomes dos grupos no formulário principal
 const selectedReadGroupNames = computed(() => initialReadGroups.value.map(g => g.name));
 const selectedWriteGroupNames = computed(() => initialWriteGroups.value.map(g => g.name));
-const selectedDenyGroupNames = computed(() => initialDenyGroups.value.map(g => g.name));
 
 </script>
 
@@ -196,26 +188,6 @@ const selectedDenyGroupNames = computed(() => initialDenyGroups.value.map(g => g
                                 <InputError :message="form.errors.write_group_ids" class="mt-2" />
                             </div>
 
-                            <div class="mb-4">
-                                <div class="flex justify-between items-center mb-2">
-                                    <Label>Grupos Bloqueados</Label>
-                                    <Button type="button" variant="outline" size="sm" @click="isDenyModalOpen = true">
-                                        Editar Grupos
-                                    </Button>
-                                </div>
-                                <div v-if="selectedDenyGroupNames.length > 0"
-                                    class="flex flex-wrap gap-2 rounded-lg border bg-muted/50 p-3 min-h-[40px] items-center dark:bg-gray-900 dark:border-gray-700">
-                                    <span v-for="groupName in selectedDenyGroupNames" :key="groupName"
-                                        class="inline-flex items-center rounded-full bg-indigo-600 px-3 py-1 text-sm font-semibold shadow-sm text-white dark:bg-indigo-700">
-                                        {{ groupName }}
-                                    </span>
-                                </div>
-                                <div v-else
-                                    class="flex items-center justify-center rounded-lg border p-3 min-h-[40px] text-sm text-muted-foreground dark:bg-gray-900 dark:border-gray-700 dark:text-gray-400">
-                                    <span>Nenhum grupo bloqueado selecionado.</span>
-                                </div>
-                                <InputError :message="form.errors.deny_group_ids" class="mt-2" />
-                            </div>
 
                         </CardContent>
                         <CardFooter class="flex justify-end">
@@ -236,8 +208,6 @@ const selectedDenyGroupNames = computed(() => initialDenyGroups.value.map(g => g
         :initial-selected-groups="initialWriteGroups" @confirm="handleWriteGroupsConfirmed"
         :username="currentUsername" />
 
-    <GroupManagerModal v-model="isDenyModalOpen" :all-groups="props.groups" :initial-selected-groups="initialDenyGroups"
-        @confirm="handleDenyGroupsConfirmed" :username="currentUsername" />
 </template>
 
 <style scoped>
