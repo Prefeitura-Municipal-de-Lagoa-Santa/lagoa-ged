@@ -50,13 +50,6 @@ class StoreUserRequest extends FormRequest
                 ->mixedCase()
                 ->numbers()
                 ->symbols(),
-                //'string',
-                //'min:8',
-                //'confirmed',
-                //'regex:/[a-z]/',      // letra minúscula
-                //'regex:/[A-Z]/',      // letra maiúscula
-                //'regex:/[0-9]/',      // número
-                //'regex:/[@$!%*#?&]/', // caractere especial
             ], // Senha obrigatória na criação
             'userGroups' => 'sometimes|array',
             'userGroups.*' => 'string|exists:mongodb.groups,_id'

@@ -11,6 +11,7 @@ use Illuminate\Http\Request;
 use Inertia\Inertia; // Importe o Inertia
 use Illuminate\Support\Facades\Auth; // Para obter o usuário logado
 use Log;
+use MongoDB\BSON\ObjectId;
 use SplFileObject;
 use Storage;
 
@@ -73,10 +74,9 @@ class DocumentController extends Controller
         $file = $request->file('csv_file');
         $filePath = $file->getPathname();
 
-           // Recebe os IDs dos grupos como STRINGS do request
+        // Recebe os IDs dos grupos como STRINGS do request
         $readGroupIdsInput = array_filter($request->input('read_group_ids', []));
         $writeGroupIdsInput = array_filter($request->input('write_group_ids', []));
-        $denyGroupIdsInput = array_filter($request->input('deny_group_ids', []));
 
         // CONVERTE AS STRINGS DE IDS PARA INSTÂNCIAS DE Jenssegers\Mongodb\Eloquent\ObjectId
         $readGroupIds = collect($readGroupIdsInput)
@@ -84,10 +84,6 @@ class DocumentController extends Controller
                                     return new ObjectId($id); // <-- Usando ObjectId do Jenssegers
                                 })->toArray();
         $writeGroupIds = collect($writeGroupIdsInput)
-                                ->map(function ($id) {
-                                    return new ObjectId($id); // <-- Usando ObjectId do Jenssegers
-                                })->toArray();
-        $denyGroupIds = collect($denyGroupIdsInput)
                                 ->map(function ($id) {
                                     return new ObjectId($id); // <-- Usando ObjectId do Jenssegers
                                 })->toArray();
@@ -191,7 +187,6 @@ class DocumentController extends Controller
                 $documentData['permissions'] = [
                     'read_group_ids' => $readGroupIds,
                     'write_group_ids' => $writeGroupIds,
-                    'deny_group_ids' => $denyGroupIds,
                 ];
 
                 $documentData['file_location'] = [
