@@ -3,13 +3,13 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\ImportDocumentRequest;
-use App\Models\Document; // Seu Model Document (MongoDB)
+use App\Models\Document;
 use App\Models\Group;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
-use Inertia\Inertia; // Importe o Inertia
-use Illuminate\Support\Facades\Auth; // Para obter o usuário logado
+use Inertia\Inertia;
+use Illuminate\Support\Facades\Auth;
 use Log;
 use MongoDB\BSON\ObjectId;
 use SplFileObject;
@@ -19,19 +19,69 @@ class DocumentController extends Controller
 {
     public function index()
     {
-        $documents = Document::query()
-            ->orderBy('created_at', 'desc')
-            ->paginate(15);
+        $user = Auth::user();
+
+        if (!$user) {
+            return Inertia::render('documents/index', [
+                'documents' => (object)['data' => []],
+                'filters' => [],
+            ]);
+        }
+
+        // --- Lógica de permissão do Admin ---
+        if ($user->isAdmin()) {
+            // Se for admin, mostra TODOS os documentos
+            $documents = Document::query()
+                ->orderBy('created_at', 'desc')
+                ->paginate(15);
+                //dd($documents);
+            
+        } else {
+            // Se não for admin, aplica o filtro por grupos de leitura
+            $userGroupObjectIds = $user->group_ids;
+            //dd($userGroupObjectIds);
+            if (empty($userGroupObjectIds)) {
+                return Inertia::render('documents/index', [
+                    'documents' => (object)['data' => []],
+                    'filters' => [],
+                ]);
+            }
+            //$userGroupObjectIds = ['686febf89895f15f3c083e94'];
+            $documents = Document::whereIn('permissions.read_group_ids', $userGroupObjectIds)
+                ->orderBy('created_at', 'desc')
+                ->paginate(15);
+                //dd($documents);
+        }
+        // --- Fim da lógica de permissão do Admin ---
+
         return Inertia::render('documents/index', [
             'documents' => $documents,
             'filters' => [],
         ]);
     }
 
-    //exibe documentos
     public function view(Document $document)
     {
-        //dd($document->file_location['path']);
+        $user = Auth::user();
+        if (!$user) { abort(401, 'Não autenticado.'); }
+
+        // --- Lógica de permissão do Admin ---
+        if (!$user->isAdmin()) {
+            // Se NÃO for admin, verifica a permissão de leitura
+            $userGroupObjectIds = $user->group_ids;
+            $documentReadGroupIds = $document->permissions['read_group_ids'] ?? [];
+
+            $userGroupStrings = array_map(fn($id) => (string)$id, $userGroupObjectIds);
+            $documentReadGroupStrings = array_map(fn($id) => (string)$id, $documentReadGroupIds);
+
+            $canRead = !empty(array_intersect($userGroupStrings, $documentReadGroupStrings));
+
+            if (!$canRead) {
+                abort(403, 'Você não tem permissão para visualizar este arquivo.');
+            }
+        }
+        // --- Fim da lógica de permissão do Admin ---
+
         $filePath = $document->file_location['path'];
         //dd($filePath);
 
@@ -41,9 +91,7 @@ class DocumentController extends Controller
 
         $fileName = $document->filename ?? basename($filePath);
         $mimeType = $document->mime_type ?? Storage::disk('samba')->mimeType($filePath);
-        //dd($fileName, $mimeType);
 
-        // Este é o comando chave: ele retorna o arquivo com os headers corretos para exibição.
         return Storage::disk('samba')->response($filePath, $fileName,[
             'Content-Type' => $mimeType,
             'Content-Disposition' => 'inline; filename="' . $fileName . '"',
@@ -52,14 +100,65 @@ class DocumentController extends Controller
 
     public function show(Document $document)
     {
-        //dd($document);// Passa os dados do documento para a view.
+        $user = Auth::user();
+        if (!$user) { abort(401, 'Não autenticado.'); }
+
+        $canEdit = false; // Inicializa a flag de edição
+
+        // --- Lógica de permissão do Admin ---
+        if ($user->isAdmin()) {
+            // Admin pode ver e editar tudo
+            $canRead = true;
+            $canEdit = true;
+        } else {
+            // Se NÃO for admin, verifica permissão de leitura
+            $userGroupObjectIds = $user->group_ids;
+            $documentReadGroupIds = $document->permissions['read_group_ids'] ?? [];
+
+            $userGroupStrings = array_map(fn($id) => (string)$id, $userGroupObjectIds);
+            $documentReadGroupStrings = array_map(fn($id) => (string)$id, $documentReadGroupIds);
+
+            $canRead = !empty(array_intersect($userGroupStrings, $documentReadGroupStrings));
+
+            if ($canRead) { // Se pode ler, verifica se pode editar
+                $documentWriteGroupIds = $document->permissions['write_group_ids'] ?? [];
+                $documentWriteGroupStrings = array_map(fn($id) => (string)$id, $documentWriteGroupIds);
+                $canEdit = !empty(array_intersect($userGroupStrings, $documentWriteGroupStrings));
+            }
+        }
+        // --- Fim da lógica de permissão do Admin ---
+
+        if (!$canRead) {
+            abort(403, 'Você não tem permissão para acessar os detalhes deste documento.');
+        }
+
         return Inertia::render('documents/show', [
-            'document' => $document
+            'document' => $document,
+            'canEdit' => $canEdit,
         ]);
     }
 
     public function import()
     {
+        $user = Auth::user();
+        if (!$user) { abort(401, 'Não autenticado.'); }
+
+        // --- Lógica de permissão do Admin ---
+        if (!$user->isAdmin()) {
+            // Se NÃO for admin, verifica se pertence ao grupo "UPLOADERS"
+            $userGroupObjectIds = $user->group_ids;
+            $uploadersGroup = Group::where('name', 'UPLOADERS')->first();
+
+            $canAccessImport = false;
+            if ($uploadersGroup) {
+                $canAccessImport = in_array((string)$uploadersGroup->_id, array_map(fn($id) => (string)$id, $userGroupObjectIds));
+            }
+
+            if (!$canAccessImport) {
+                abort(403, 'Você não tem permissão para importar documentos.');
+            }
+        }
+        // --- Fim da lógica de permissão do Admin ---
 
         $groups = Group::whereNot('name', 'ADMINISTRADORES')->get(['_id', 'name']);
 
@@ -67,26 +166,42 @@ class DocumentController extends Controller
             'groups' => $groups,
         ]);
     }
+
     public function processImport(ImportDocumentRequest $request)
     {
-        //$validateData=$request->validated();
-        //dd($validateData);
+        $user = Auth::user();
+        if (!$user) { abort(401, 'Não autenticado.'); }
+
+        // --- Lógica de permissão do Admin ---
+        if (!$user->isAdmin()) {
+            // Se NÃO for admin, verifica se pertence ao grupo "UPLOADERS"
+            $userGroupObjectIds = $user->group_ids;
+            $uploadersGroup = Group::where('name', 'UPLOADERS')->first();
+
+            $canProcessImport = false;
+            if ($uploadersGroup) {
+                $canProcessImport = in_array((string)$uploadersGroup->_id, array_map(fn($id) => (string)$id, $userGroupObjectIds));
+            }
+
+            if (!$canProcessImport) {
+                abort(403, 'Você não tem permissão para processar a importação de documentos.');
+            }
+        }
+        // --- Fim da lógica de permissão do Admin ---
+
+        // Restante do seu código de importação...
         $file = $request->file('csv_file');
         $filePath = $file->getPathname();
 
-        // Recebe os IDs dos grupos como STRINGS do request
         $readGroupIdsInput = array_filter($request->input('read_group_ids', []));
         $writeGroupIdsInput = array_filter($request->input('write_group_ids', []));
 
-        // CONVERTE AS STRINGS DE IDS PARA INSTÂNCIAS DE Jenssegers\Mongodb\Eloquent\ObjectId
         $readGroupIds = collect($readGroupIdsInput)
-                                ->map(function ($id) {
-                                    return new ObjectId($id); // <-- Usando ObjectId do Jenssegers
-                                })->toArray();
+                                ->map(fn ($id) => new ObjectId($id))
+                                ->toArray();
         $writeGroupIds = collect($writeGroupIdsInput)
-                                ->map(function ($id) {
-                                    return new ObjectId($id); // <-- Usando ObjectId do Jenssegers
-                                })->toArray();
+                                ->map(fn ($id) => new ObjectId($id))
+                                ->toArray();
 
         $importedCount = 0;
         $skippedCount = 0;
@@ -121,8 +236,6 @@ class DocumentController extends Controller
 
                 $filename = $data['filename'] ?? null;
                 $fileLocationPath = $data['file_location_path'] ?? null;
-                //$title = $data['title'] ?? null;
-                //dd($filename, $fileLocationPath);
 
                 if (!$filename || !$fileLocationPath) {
                     $errors[] = "Linha ignorada por falta de 'filename' ou 'file_location_path': " . json_encode($data);
@@ -131,12 +244,10 @@ class DocumentController extends Controller
                     continue;
                 }
 
-                //$docs = Document::limit(5)->get();
-                //dd($docs);
                 $existingDocument = Document::where('filename', $filename)
                     ->where('file_location.path', $fileLocationPath)
                     ->first();
-                //dd($existingDocument);
+
                 if ($existingDocument) {
                     $errors[] = "Documento duplicado encontrado e ignorado: {$filename} em {$fileLocationPath}";
                     Log::info("CSV Import: Documento duplicado ignorado.", ['filename' => $filename, 'path' => $fileLocationPath]);
@@ -149,34 +260,25 @@ class DocumentController extends Controller
                     'filename' => $filename,
                     'file_extension' => $data['file_extension'] ?? null,
                     'mime_type' => $data['mime_type'] ?? null,
-                    //'file_size' => (int) ($data['file_size'] ?? 0),
                     'upload_date' => isset($data['upload_date']) ? Carbon::parse($data['upload_date']) : Carbon::now(),
-                    'uploaded_by' => auth()->id() ?? 1,
+                    'uploaded_by' => new ObjectId($user->id),
                     'status' => $data['status'] ?? 'active',
                 ];
 
                 $documentData['metadata'] = [];
-
                 $documentData['metadata']['document_type'] = $data['metadata_document_type'] ?? null;
                 $documentData['metadata']['document_year'] = (int) ($data['metadata_document_year'] ?? 0);
 
-                // =====================================================================
-                // LÓGICA PARA METADADOS DINÂMICOS
-                // =====================================================================
                 foreach ($data as $csvHeader => $value) {
-                    // Verifica se o cabeçalho começa com 'metadata_' e não é um dos campos já tratados
                     if (
                         str_starts_with($csvHeader, 'metadata_') &&
-                        $csvHeader !== 'metadata_document_type' && // Evita duplicar/sobrescrever se já tratado
+                        $csvHeader !== 'metadata_document_type' &&
                         $csvHeader !== 'metadata_document_year'
-                    )    // Evita duplicar/sobrescrever se já tratado
-                    {
-                        // Extrai o nome real do campo de metadado (remover 'metadata_')
+                    ) {
                         $metadataFieldName = substr($csvHeader, strlen('metadata_'));
                         $documentData['metadata'][$metadataFieldName] = $value;
                     }
                 }
-
 
                 if (isset($data['tags']) && !empty($data['tags'])) {
                     $documentData['tags'] = array_map('trim', explode('|', $data['tags']));
@@ -195,15 +297,10 @@ class DocumentController extends Controller
                     'bucket_name' => $data['file_location_bucket_name'] ?? null,
                 ];
 
-                //$doc = new Document($documentData);
-                //dd($doc->getAttributes());
-
-
                 Document::create($documentData);
                 $importedCount++;
                 Log::info("CSV Import: Documento importado: {$filename}");
             }
-            //dd($errors);
             unlink($filePath);
 
             $message = "Importação concluída. Total importados: {$importedCount}, Total ignorados: {$skippedCount}.";

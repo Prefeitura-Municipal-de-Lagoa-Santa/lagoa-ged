@@ -13,6 +13,7 @@ use MongoDB\Laravel\Eloquent\SoftDeletes;
 use LdapRecord\Laravel\Auth\AuthenticatesWithLdap;
 use LdapRecord\Laravel\Auth\LdapAuthenticatable;
 use LdapRecord\Laravel\Auth\HasLdapUser;
+use MongoDB\BSON\ObjectId;
 
 
 
@@ -40,7 +41,7 @@ class User extends Authenticatable implements LdapAuthenticatable
         'domain',
     ];
 
-    protected $appends = ['is_protected','is_ldap'];
+    protected $appends = ['is_protected','is_ldap','group_ids'];
 
     protected function getIsProtectedAttribute(): bool
     {
@@ -60,9 +61,38 @@ class User extends Authenticatable implements LdapAuthenticatable
         return !empty($this->domain);
     }
 
-    public function group()
+   public function getGroupIdsAttribute(): array
     {
-        return $this->belongsTo(Group::class);
+        // Cache simples para evitar múltiplas consultas na mesma requisição
+        if (array_key_exists('group_ids', $this->attributes)) {
+            return $this->attributes['group_ids'];
+        }
+
+        // Garante que o ID do usuário (this->_id) é um ObjectId para a consulta
+        $userIdAsObjectId = ($this->_id instanceof ObjectId) ? $this->_id : new ObjectId($this->_id);
+
+        // Busca os _id (ObjectIds) dos grupos onde o ObjectId do usuário
+        // está presente no array 'user_ids' da coleção Group.
+        // O pluck('_id')->toArray() pode retornar strings aqui dependendo da versão/config.
+        $rawGroupIdsFromDb = Group::where('user_ids', $userIdAsObjectId)->pluck('id')->toArray();
+        //dd($rawGroupIdsFromDb);
+        // ** AQUI ESTÁ A MUDANÇA CRUCIAL: Mapeia e converte cada ID para uma instância de ObjectId **
+        $groupIds = array_map(function($id) {
+            // Verifica se já é um ObjectId (para segurança, embora não seja o caso relatado)
+            // ou se é uma string válida para conversão.
+            if ($id instanceof ObjectId) {
+                return $id;
+            }
+            // Se for string, tenta converter.
+            // Poderíamos adicionar mais validação aqui se o $id pudesse ser nulo ou malformado.
+            return new ObjectId($id);
+        }, $rawGroupIdsFromDb);
+
+
+        // Armazena o resultado no atributo 'attributes' para caching básico no modelo.
+        $this->attributes['group_ids'] = $groupIds;
+
+        return $groupIds;
     }
 
     public function isAdmin(): bool
