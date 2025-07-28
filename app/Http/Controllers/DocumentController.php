@@ -12,58 +12,127 @@ use Inertia\Inertia;
 use Illuminate\Support\Facades\Auth;
 use Log;
 use MongoDB\BSON\ObjectId;
+use MongoDB\BSON\regex;
 use SplFileObject;
 use Storage;
 
 class DocumentController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
         $user = Auth::user();
 
         if (!$user) {
             return Inertia::render('documents/index', [
-                'documents' => (object)['data' => []],
-                'filters' => [],
+                'documents' => (object) ['data' => []],
+                'filters' => $request->only(['title', 'tags', 'document_year', 'other_metadata']),
+                'years' => $this->getAvailableYears(),
             ]);
         }
 
-        // --- Lógica de permissão do Admin ---
-        if ($user->isAdmin()) {
-            // Se for admin, mostra TODOS os documentos
-            $documents = Document::query()
-                ->orderBy('created_at', 'desc')
-                ->paginate(15);
-                //dd($documents);
-            
-        } else {
-            // Se não for admin, aplica o filtro por grupos de leitura
+        $query = Document::query();
+
+        // 1. --- Lógica de Permissão (Admin vs. Usuário Comum) ---
+        if (!$user->isAdmin()) {
             $userGroupObjectIds = $user->group_ids;
-            //dd($userGroupObjectIds);
             if (empty($userGroupObjectIds)) {
                 return Inertia::render('documents/index', [
-                    'documents' => (object)['data' => []],
-                    'filters' => [],
+                    'documents' => (object) ['data' => []],
+                    'filters' => $request->only(['title', 'tags', 'document_year', 'other_metadata']),
+                    'years' => $this->getAvailableYears(),
                 ]);
             }
-            //$userGroupObjectIds = ['686febf89895f15f3c083e94'];
-            $documents = Document::whereIn('permissions.read_group_ids', $userGroupObjectIds)
-                ->orderBy('created_at', 'desc')
-                ->paginate(15);
-                //dd($documents);
+            $query->whereIn('permissions.read_group_ids', $userGroupObjectIds);
         }
-        // --- Fim da lógica de permissão do Admin ---
 
+        // 2. --- Aplicação de Filtros Dinâmicos ---
+        $filters = $request->only([
+            'title',
+            'tags',
+            'document_year',
+            'other_metadata',
+        ]);
+
+        // **CORREÇÃO para LogicException e Potencialmente para TypeError:**
+        // Escapar caracteres especiais para regex e agrupar filtros principais em um único 'where' closure
+        $query->where(function ($q) use ($filters) {
+
+            // Filtro por Título (Busca parcial, case-insensitive)
+            if (!empty($filters['title'])) {
+                $pattern = new regex('.*' . preg_quote($filters['title'], '/') . '.*', 'i');
+                $q->where('title', 'regex', $pattern);
+            }
+
+            // Filtro por Tags (assume string separada por vírgulas, busca se o documento contém ALGUMA das tags)
+            if (!empty($filters['tags'])) {
+                $tagsArray = array_map('trim', explode(',', $filters['tags']));
+                $tagsArray = array_filter($tagsArray);
+
+                if (!empty($tagsArray)) {
+                    $q->where(function ($tagQuery) use ($tagsArray) {
+                        foreach ($tagsArray as $tag) {
+                            // Busca parcial (semelhante ao LIKE) e sem case sensitive
+                            $regex = new \MongoDB\BSON\Regex($tag, 'i'); // 'i' ignora case
+                            $tagQuery->orWhere('tags', 'regexp', $regex);
+                        }
+                    });
+                }
+            }
+
+
+            // Filtro por Ano do Documento (metadata.document_year)
+            if (!empty($filters['document_year'])) {
+                $year = (int) $filters['document_year'];
+                if ($year > 0) {
+                    $q->where('metadata.document_year', $year);
+                }
+            }
+
+            $searchableMetadataFields = [
+                'document_number',
+                'document_type',
+            ];
+            // Filtro por Outros Metadados Dinâmicos (um único campo de texto livre)
+            if (!empty($filters['other_metadata']) && is_string($filters['other_metadata'])) {
+                $escapedSearchText = preg_quote($filters['other_metadata'], '/');
+                $pattern = new regex('.*' . $escapedSearchText . '.*', 'i');
+
+                $q->where(function ($orQuery) use ($pattern, $searchableMetadataFields) {
+                    foreach ($searchableMetadataFields as $field) {
+                        $orQuery->orWhere('metadata.' . $field, 'regex', $pattern);
+                    }
+                });
+            }
+        }); // Fim da closure principal que agrupa todos os filtros
+
+        // 3. Paginação e Ordenação Final
+        $documents = $query->orderBy('created_at', 'desc')->paginate(15)->appends($request->query());
+        //dd($documents);
         return Inertia::render('documents/index', [
             'documents' => $documents,
-            'filters' => [],
+            'filters' => $filters,
+            'years' => $this->getAvailableYears(),
         ]);
+    }
+
+    // Método auxiliar para obter uma lista de anos (para o select do frontend)
+    private function getAvailableYears(): array
+    {
+        $currentYear = Carbon::now()->year;
+        $years = [];
+        // Gera anos dos últimos 20 anos até o próximo ano (ou como desejar)
+        for ($i = $currentYear + 1; $i >= $currentYear - 20; $i--) {
+            $years[] = $i;
+        }
+        return $years;
     }
 
     public function view(Document $document)
     {
         $user = Auth::user();
-        if (!$user) { abort(401, 'Não autenticado.'); }
+        if (!$user) {
+            abort(401, 'Não autenticado.');
+        }
 
         // --- Lógica de permissão do Admin ---
         if (!$user->isAdmin()) {
@@ -71,8 +140,8 @@ class DocumentController extends Controller
             $userGroupObjectIds = $user->group_ids;
             $documentReadGroupIds = $document->permissions['read_group_ids'] ?? [];
 
-            $userGroupStrings = array_map(fn($id) => (string)$id, $userGroupObjectIds);
-            $documentReadGroupStrings = array_map(fn($id) => (string)$id, $documentReadGroupIds);
+            $userGroupStrings = array_map(fn($id) => (string) $id, $userGroupObjectIds);
+            $documentReadGroupStrings = array_map(fn($id) => (string) $id, $documentReadGroupIds);
 
             $canRead = !empty(array_intersect($userGroupStrings, $documentReadGroupStrings));
 
@@ -92,7 +161,7 @@ class DocumentController extends Controller
         $fileName = $document->filename ?? basename($filePath);
         $mimeType = $document->mime_type ?? Storage::disk('samba')->mimeType($filePath);
 
-        return Storage::disk('samba')->response($filePath, $fileName,[
+        return Storage::disk('samba')->response($filePath, $fileName, [
             'Content-Type' => $mimeType,
             'Content-Disposition' => 'inline; filename="' . $fileName . '"',
         ]);
@@ -101,7 +170,9 @@ class DocumentController extends Controller
     public function show(Document $document)
     {
         $user = Auth::user();
-        if (!$user) { abort(401, 'Não autenticado.'); }
+        if (!$user) {
+            abort(401, 'Não autenticado.');
+        }
 
         $canEdit = false; // Inicializa a flag de edição
 
@@ -115,14 +186,14 @@ class DocumentController extends Controller
             $userGroupObjectIds = $user->group_ids;
             $documentReadGroupIds = $document->permissions['read_group_ids'] ?? [];
 
-            $userGroupStrings = array_map(fn($id) => (string)$id, $userGroupObjectIds);
-            $documentReadGroupStrings = array_map(fn($id) => (string)$id, $documentReadGroupIds);
+            $userGroupStrings = array_map(fn($id) => (string) $id, $userGroupObjectIds);
+            $documentReadGroupStrings = array_map(fn($id) => (string) $id, $documentReadGroupIds);
 
             $canRead = !empty(array_intersect($userGroupStrings, $documentReadGroupStrings));
 
             if ($canRead) { // Se pode ler, verifica se pode editar
                 $documentWriteGroupIds = $document->permissions['write_group_ids'] ?? [];
-                $documentWriteGroupStrings = array_map(fn($id) => (string)$id, $documentWriteGroupIds);
+                $documentWriteGroupStrings = array_map(fn($id) => (string) $id, $documentWriteGroupIds);
                 $canEdit = !empty(array_intersect($userGroupStrings, $documentWriteGroupStrings));
             }
         }
@@ -141,7 +212,9 @@ class DocumentController extends Controller
     public function import()
     {
         $user = Auth::user();
-        if (!$user) { abort(401, 'Não autenticado.'); }
+        if (!$user) {
+            abort(401, 'Não autenticado.');
+        }
 
         // --- Lógica de permissão do Admin ---
         if (!$user->isAdmin()) {
@@ -151,7 +224,7 @@ class DocumentController extends Controller
 
             $canAccessImport = false;
             if ($uploadersGroup) {
-                $canAccessImport = in_array((string)$uploadersGroup->_id, array_map(fn($id) => (string)$id, $userGroupObjectIds));
+                $canAccessImport = in_array((string) $uploadersGroup->_id, array_map(fn($id) => (string) $id, $userGroupObjectIds));
             }
 
             if (!$canAccessImport) {
@@ -170,38 +243,34 @@ class DocumentController extends Controller
     public function processImport(ImportDocumentRequest $request)
     {
         $user = Auth::user();
-        if (!$user) { abort(401, 'Não autenticado.'); }
+        if (!$user) {
+            abort(401, 'Não autenticado.');
+        }
 
-        // --- Lógica de permissão do Admin ---
         if (!$user->isAdmin()) {
-            // Se NÃO for admin, verifica se pertence ao grupo "UPLOADERS"
             $userGroupObjectIds = $user->group_ids;
             $uploadersGroup = Group::where('name', 'UPLOADERS')->first();
 
             $canProcessImport = false;
             if ($uploadersGroup) {
-                $canProcessImport = in_array((string)$uploadersGroup->_id, array_map(fn($id) => (string)$id, $userGroupObjectIds));
+                $canProcessImport = in_array((string) $uploadersGroup->_id, array_map(fn($id) => (string) $id, $userGroupObjectIds));
             }
 
             if (!$canProcessImport) {
                 abort(403, 'Você não tem permissão para processar a importação de documentos.');
             }
         }
-        // --- Fim da lógica de permissão do Admin ---
 
-        // Restante do seu código de importação...
         $file = $request->file('csv_file');
         $filePath = $file->getPathname();
 
-        $readGroupIdsInput = array_filter($request->input('read_group_ids', []));
-        $writeGroupIdsInput = array_filter($request->input('write_group_ids', []));
+        $readGroupIds = collect(array_filter($request->input('read_group_ids', [])))
+            ->map(fn($id) => new ObjectId($id))
+            ->toArray();
 
-        $readGroupIds = collect($readGroupIdsInput)
-                                ->map(fn ($id) => new ObjectId($id))
-                                ->toArray();
-        $writeGroupIds = collect($writeGroupIdsInput)
-                                ->map(fn ($id) => new ObjectId($id))
-                                ->toArray();
+        $writeGroupIds = collect(array_filter($request->input('write_group_ids', [])))
+            ->map(fn($id) => new ObjectId($id))
+            ->toArray();
 
         $importedCount = 0;
         $skippedCount = 0;
@@ -286,6 +355,16 @@ class DocumentController extends Controller
                     $documentData['tags'] = [];
                 }
 
+                // ✅ Adiciona tag ADLP automaticamente se o tipo de documento for um dos desejados
+                $documentType = strtoupper(trim($documentData['metadata']['document_type'] ?? ''));
+                if (in_array($documentType, ['DECRETO', 'ATO', 'LEI', 'PORTARIA'])) {
+                    $documentData['tags'][] = 'ADLP';
+                }
+
+                // ✅ Evita tags duplicadas
+                $documentData['tags'] = array_map(fn($tag) => strtoupper(trim($tag)), $documentData['tags']);
+                $documentData['tags'] = array_unique($documentData['tags']);
+
                 $documentData['permissions'] = [
                     'read_group_ids' => $readGroupIds,
                     'write_group_ids' => $writeGroupIds,
@@ -301,6 +380,7 @@ class DocumentController extends Controller
                 $importedCount++;
                 Log::info("CSV Import: Documento importado: {$filename}");
             }
+
             unlink($filePath);
 
             $message = "Importação concluída. Total importados: {$importedCount}, Total ignorados: {$skippedCount}.";
@@ -317,4 +397,5 @@ class DocumentController extends Controller
             return redirect()->back()->with('error', "Ocorreu um erro grave durante a importação. Verifique os logs do servidor.")->with('importErrors', $errors);
         }
     }
+
 }

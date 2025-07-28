@@ -1,22 +1,21 @@
 <script setup lang="ts">
 import DashboardLayout from '@/layouts/DashboardLayout.vue';
-import { Head, Link } from '@inertiajs/vue3';
-import { ref } from 'vue';
+import { Head, Link, router } from '@inertiajs/vue3';
+import { ref, watch } from 'vue';
 import { Button } from '@/components/ui/button';
-import { Eye, FilePlus, Pencil, Plus, Trash } from 'lucide-vue-next';
+import { Eye, FilePlus, Pencil, Plus, Trash, ChevronDown, ChevronUp } from 'lucide-vue-next';
 import { BreadcrumbItem } from '@/types';
 
-// Ajustando a interface Document para refletir a estrutura do seu MongoDB
 interface Document {
-  id: string; // MongoDB usa _id como string
-  title: string; // Assumindo que você tem um campo 'title' no seu documento
-  metadata: { // O campo metadata é um objeto
-    document_type: string;
-    // ... outras propriedades dentro de metadata
+  id: string;
+  title: string;
+  metadata: {
+    document_type?: string;
+    document_year?: number;
+    [key: string]: any;
   };
-  upload_date: string; // Data de upload, como string ISO
-  file_extension: string; // Extensão do arquivo (PDF, DOCX, etc.)
-  // ... outros campos que você pode ter, como 'status' (se for usar)
+  upload_date: string;
+  file_extension: string;
 };
 
 interface PaginatedDocuments {
@@ -26,17 +25,53 @@ interface PaginatedDocuments {
     label: string;
     active: boolean;
   }>;
-  // Você pode adicionar outras propriedades de paginação se precisar, ex: total, current_page
 };
 
 interface Props {
   documents: PaginatedDocuments;
-  filters?: Record<string, string>;
+  filters: Record<string, string | number | null>;
+  years: number[];
 };
 
 const props = defineProps<Props>();
 
-const getTypeBadgeClass = (docType: string): string => {
+const form = ref({
+  title: props.filters?.title || '',
+  tags: props.filters?.tags || '',
+  document_year: props.filters?.document_year || '',
+  other_metadata: props.filters?.other_metadata || '',
+});
+
+// Calcula se algum filtro está ativo para decidir se a caixa deve iniciar aberta
+const areFiltersActive = () => {
+  return Object.values(form.value).some(value => value !== '' && value !== null);
+};
+
+// O estado inicial de showFilters agora depende de ter filtros ativos na URL
+const showFilters = ref(areFiltersActive());
+
+const applyFilters = () => {
+  const cleanForm = Object.fromEntries(
+    Object.entries(form.value).filter(([, value]) => value !== '' && value !== null)
+  );
+
+  router.get(route('documents.index'), cleanForm, {
+    preserveState: true,
+    preserveScroll: true,
+  });
+};
+
+let debounceTimeout: ReturnType<typeof setTimeout> | null = null;
+watch(form, (newForm) => {
+  if (debounceTimeout) {
+    clearTimeout(debounceTimeout);
+  }
+  debounceTimeout = setTimeout(() => {
+    applyFilters();
+  }, 300);
+}, { deep: true });
+
+const getTypeBadgeClass = (docType?: string): string => {
   switch (docType?.toUpperCase()) {
     case 'PDF':
       return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200';
@@ -82,10 +117,53 @@ const breadcrumbs: BreadcrumbItem[] = [
         </h1>
         <Button as-child>
           <Link :href="route('documents.import')">
-          <FilePlus class="mr-2 h-4 w-4" />
-          Importar Documentos
+            <FilePlus class="mr-2 h-4 w-4" />
+            Importar Documentos
           </Link>
         </Button>
+      </div>
+
+      <div class="mb-4">
+        <Button @click="showFilters = !showFilters" variant="outline">
+          Filtros
+          <ChevronUp v-if="showFilters" class="ml-2 h-4 w-4" />
+          <ChevronDown v-else class="ml-2 h-4 w-4" />
+        </Button>
+      </div>
+
+      <div v-if="showFilters" class="mb-6 p-4 border rounded-lg shadow-md bg-card transition-all duration-300 ease-in-out">
+        <h2 class="text-xl font-semibold mb-3 text-foreground">Filtros</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          <div>
+            <label for="title" class="block text-sm font-medium text-muted-foreground">Título</label>
+            <input type="text" id="title" v-model="form.title"
+              class="mt-1 block w-full rounded-md border-input bg-background px-3 py-2 text-sm text-foreground shadow-sm focus:border-primary focus:ring-primary">
+          </div>
+          <div>
+            <label for="tags" class="block text-sm font-medium text-muted-foreground">Tags (separadas por vírgulas)</label>
+            <input type="text" id="tags" v-model="form.tags"
+              class="mt-1 block w-full rounded-md border-input bg-background px-3 py-2 text-sm text-foreground shadow-sm focus:border-primary focus:ring-primary">
+          </div>
+          <div>
+            <label for="document_year" class="block text-sm font-medium text-muted-foreground">Ano do Documento</label>
+            <select id="document_year" v-model="form.document_year"
+              class="mt-1 block w-full rounded-md border-input bg-background px-3 py-2 text-sm text-foreground shadow-sm focus:border-primary focus:ring-primary">
+              <option value="">Todos os Anos</option>
+              <option v-for="year in props.years" :key="year" :value="year">{{ year }}</option>
+            </select>
+          </div>
+          <div>
+            <label for="other_metadata" class="block text-sm font-medium text-muted-foreground">Outros Metadados</label>
+            <input type="text" id="other_metadata" v-model="form.other_metadata"
+              class="mt-1 block w-full rounded-md border-input bg-background px-3 py-2 text-sm text-foreground shadow-sm focus:border-primary focus:ring-primary"
+              placeholder="Buscar em Fornecedor, Paciente, etc.">
+          </div>
+        </div>
+        <div class="mt-4 flex justify-end">
+          <Button @click="form = { title: '', tags: '', document_year: '', other_metadata: '' }; applyFilters();" variant="outline">
+            Limpar Filtros
+          </Button>
+        </div>
       </div>
 
       <div class="bg-card p-0 sm:p-6 rounded-lg shadow-md overflow-x-auto hidden md:block">
@@ -120,9 +198,7 @@ const breadcrumbs: BreadcrumbItem[] = [
               </td>
               <td class="px-6 py-4 whitespace-nowrap text-sm text-muted-foreground">
                 <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full"
-                  :class="getTypeBadgeClass(doc.metadata.document_type)">
-                  {{ doc.metadata.document_type }}
-                </span>
+                  :class="getTypeBadgeClass(doc.metadata?.document_type)"> {{ doc.metadata?.document_type }} </span>
               </td>
               <td class="px-6 py-4 whitespace-nowrap text-sm text-muted-foreground">{{ new
                 Date(doc.upload_date).toLocaleDateString() }}</td>
@@ -161,8 +237,8 @@ const breadcrumbs: BreadcrumbItem[] = [
                 <div>
                   <span class="text-muted-foreground block text-xs uppercase font-medium p-1">Tipo de Documento</span>
                   <span class="px-2 py-0.5 inline-flex text-xs leading-5 font-semibold rounded-full"
-                    :class="getTypeBadgeClass(doc.metadata.document_type)">
-                    {{ doc.metadata.document_type }}
+                    :class="getTypeBadgeClass(doc.metadata?.document_type)">
+                    {{ doc.metadata?.document_type }}
                   </span>
                 </div>
                 <div>
@@ -175,6 +251,14 @@ const breadcrumbs: BreadcrumbItem[] = [
                 <div class="col-span-2">
                   <span class="text-muted-foreground block text-xs uppercase font-medium p-1">Data de Upload</span>
                   <span class="text-foreground p-1">{{ new Date(doc.upload_date).toLocaleDateString() }}</span>
+                </div>
+                <div v-if="doc.metadata?.document_year" class="col-span-2">
+                  <span class="text-muted-foreground block text-xs uppercase font-medium p-1">Ano do Documento</span>
+                  <span class="text-foreground p-1">{{ doc.metadata.document_year }}</span>
+                </div>
+                <div v-for="(value, key) in doc.metadata" :key="key" v-if="!['document_type', 'document_year'].includes(key) && value">
+                    <span class="text-muted-foreground block text-xs uppercase font-medium p-1">{{ key.replace(/_/g, ' ') }}</span>
+                    <span class="text-foreground p-1">{{ value }}</span>
                 </div>
               </div>
             </a>
