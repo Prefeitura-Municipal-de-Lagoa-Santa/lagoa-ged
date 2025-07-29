@@ -59,10 +59,4 @@ class Group extends Model
         return $this->setRelation('members', $members);
     }
 
-
-
-    public function readableDocuments()
-    {
-        return $this->belongsToMany(Document::class, null, 'permissions.read_group_ids', '_id');
-    }
 }

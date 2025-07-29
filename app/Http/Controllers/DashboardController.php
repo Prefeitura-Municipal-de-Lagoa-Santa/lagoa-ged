@@ -6,65 +6,78 @@ use App\Models\Document; // Seu Model Document (MongoDB)
 use Illuminate\Http\Request;
 use Inertia\Inertia; // Importe o Inertia
 use Illuminate\Support\Facades\Auth; // Para obter o usuário logado
-use Storage;
-
+use Illuminate\Support\Facades\Log;
 class DashboardController extends Controller
 {
     public function index()
     {
-        //$allMetadata = Document::query()->pluck('metadata');
-        //dd($allMetadata);
-        //$documentCounts = $allMetadata->map(function ($meta) {
-        //    return $meta->document_type ?? 'Indefinido';
-        //})->countBy();
-        ////dd($documentCounts);
-        ////$documents = Document::query()
-        ////    ->orderBy('created_at', 'desc')
-        ////    ->get();
-        //return Inertia::render('Dashboard', [
-        //    'documents' => $documentCounts,
-        //]);
+        // Tipos de documentos que compõem ADLP
+        $tiposADLP = ['DECRETO', 'ATO', 'LEI', 'PORTARIA'];
 
-        // Usamos o método `raw()` do jenssegers/laravel-mongodb para executar uma pipeline de agregação
-        $documentCounts = Document::raw(function($collection) {
+        // Agregação para contagem por tipo de documento E para somar ADLP
+        $aggregationResult = Document::raw(function($collection) use ($tiposADLP) {
             return $collection->aggregate([
+                // Primeiro, agrupa por tipo de documento para obter as contagens individuais
                 [
-                    // O estágio $group agrupa os documentos pelo campo especificado e conta as ocorrências.
-                    // '$metadata.document_type' acessa o campo document_type dentro do subdocumento metadata.
                     '$group' => [
-                        '_id' => '$metadata.document_type', // Agrupar pelo tipo de documento
-                        'count' => ['$sum' => 1]            // Contar 1 para cada documento no grupo
+                        '_id' => '$metadata.document_type',
+                        'count' => ['$sum' => 1]
                     ]
                 ],
+                // Agora, processa os resultados para formatar e calcular o total ADLP
                 [
-                    // O estágio $project é opcional, mas ajuda a formatar a saída, renomeando '_id' para 'document_type'
-                    '$project' => [
-                        'document_type' => '$_id', // Renomeia o campo '_id' (que é o tipo de documento) para 'document_type'
-                        'count' => '$count',
-                        '_id' => 0 // Remove o campo '_id' original da saída final
+                    '$facet' => [
+                        'documentCounts' => [
+                            [
+                                '$project' => [
+                                    'document_type' => '$_id',
+                                    'count' => '$count',
+                                    '_id' => 0
+                                ]
+                            ]
+                        ],
+                        'adlpTotal' => [
+                            [
+                                // Filtra apenas os tipos ADLP para esta parte do facet
+                                '$match' => [
+                                    '_id' => ['$in' => $tiposADLP]
+                                ]
+                            ],
+                            [
+                                // Soma as contagens dos tipos ADLP
+                                '$group' => [
+                                    '_id' => null, // Agrupa tudo em um único resultado
+                                    'total' => ['$sum' => '$count']
+                                ]
+                            ]
+                        ]
                     ]
                 ]
             ]);
-        })->pluck('count', 'document_type')->toArray(); 
-        //dd($documentCounts);
-        // `pluck('count', 'document_type')` transforma a coleção de resultados em um array associativo
-        // onde a chave é 'document_type' e o valor é 'count'.
-        // `toArray()` converte para um array PHP puro, ideal para passar ao Inertia.js.
+        })->toArray(); // Converte o resultado da agregação para um array
 
-        // Tratamento para tipos de documento nulos ou vazios (ex: '' ou null do MongoDB)
-        // Se o '_id' do grupo for nulo, significa que o `document_type` era nulo ou não existia.
+        // Processa as contagens de documentos individuais
         $finalDocumentCounts = [];
-        foreach ($documentCounts as $type => $count) {
-            if (is_null($type) || $type === '') { // Verifica se o tipo é nulo ou uma string vazia
+        $documentCountsRaw = $aggregationResult[0]['documentCounts'] ?? [];
+        foreach ($documentCountsRaw as $item) {
+            $type = $item['document_type'];
+            $count = $item['count'];
+            if (is_null($type) || $type === '') {
                 $finalDocumentCounts['Indefinido'] = ($finalDocumentCounts['Indefinido'] ?? 0) + $count;
             } else {
                 $finalDocumentCounts[$type] = $count;
             }
         }
-        
-        return Inertia::render('Dashboard', [
-            'documents' => $finalDocumentCounts, // Passa as contagens processadas para o seu componente Vue
-        ]);
 
+        // Processa o total de ADLP
+        $totalADLP = 0;
+        if (!empty($aggregationResult[0]['adlpTotal'])) {
+            $totalADLP = $aggregationResult[0]['adlpTotal'][0]['total'] ?? 0;
+        }
+
+        return Inertia::render('Dashboard', [
+            'documents' => $finalDocumentCounts,
+            'totalADLP' => $totalADLP, // Passa a soma de ADLP separadamente
+        ]);
     }
 }

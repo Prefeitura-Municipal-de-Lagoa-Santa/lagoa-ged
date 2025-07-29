@@ -35,13 +35,6 @@ class Document extends Model
     //    'file_location' => 'array', // Ou 'object'
     //];
 
-    public function uploader()
-    {
-        return $this->belongsTo(User::class, 'uploaded_by', '_id');
-    }
+    
 
-    public function readableByGroups()
-    {
-        return $this->belongsToMany(Group::class, null, 'permissions.read_group_ids', '_id');
-    }
 }
