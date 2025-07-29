@@ -1,0 +1,53 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: lagoa-ged
+    restart: unless-stopped
+    ports:
+      # Expõe a aplicação na porta 8000
+      - "8000:80"
+    volumes:
+      - .:/var/www/html
+    networks:
+      # Conecta à sua rede principal já existente
+      - rede_geral_existente
+    env_file:
+      - .env
+      
+  mongodb_prod: # Nome do serviço dentro desta stack
+    image: mongo:latest # Use uma tag específica para produção, ex: mongo:6.0.13
+    container_name: lagoa_mongo # MUITO IMPORTANTE: Este nome deve ser o DB_HOST da sua aplicação Laravel
+    restart: always # Garante que o contêiner reinicie com o Docker ou em caso de falha
+    ports:
+      # Expõe a aplicação na porta 8000
+      - "65017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: mongolsapps
+      MONGO_INITDB_ROOT_PASSWORD: DlBD4TrCAesSJl4kBwSBho6
+      #MONGO_INITDB_DATABASE: lagoa_ged_db 
+    volumes:
+      - mongo_data_lagoa:/data/db # Volume persistente para os dados do MongoDB
+    networks:
+      - rede_geral_existente # Conecta à mesma rede que a aplicação Laravel
+  
+  redis_prod: # Nome do serviço dentro desta stack
+    image: redis/redis-stack-server:latest # Use uma tag específica para produção, ex: mongo:6.0.13
+    container_name: lagoa_redis # MUITO IMPORTANTE: Este nome deve ser o DB_HOST da sua aplicação Laravel
+    restart: always # Garante que o contêiner reinicie com o Docker ou em caso de falha
+    ports:
+      # Expõe a aplicação na porta 8000
+      - "6679:6379"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: redislsapps
+      MONGO_INITDB_ROOT_PASSWORD: ByE7rbQb82gbWMuxZc8w
+      #MONGO_INITDB_DATABASE: lagoa_ged_db
+    networks:
+      - rede_geral_existente # Conecta à mesma rede que a aplicação Laravel
+
+networks:
+  rede_geral_existente:
+    external: true
+    # Garanta que este é o nome exato da sua rede externa
+    name: local_network
