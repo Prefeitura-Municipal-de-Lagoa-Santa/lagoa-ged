@@ -41,7 +41,7 @@ class User extends Authenticatable implements LdapAuthenticatable
         'domain',
     ];
 
-    protected $appends = ['is_protected','is_ldap','group_ids'];
+    protected $appends = ['is_protected','is_ldap','group_ids', 'is_admin'];
 
     protected function getIsProtectedAttribute(): bool
     {
@@ -52,6 +52,11 @@ class User extends Authenticatable implements LdapAuthenticatable
         $protectedUsernamesUpper = array_map('strtoupper', $protectedUsernames);
         
         return in_array(strtoupper($this->username), $protectedUsernamesUpper);
+    }
+    protected function getIsAdminAttribute(): bool
+    {
+               
+        return $this->isAdmin();
     }
 
     protected function getIsLdapAttribute(): bool

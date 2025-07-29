@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Document; // Seu Model Document (MongoDB)
+use App\Models\Group;
 use Illuminate\Http\Request;
 use Inertia\Inertia; // Importe o Inertia
 use Illuminate\Support\Facades\Auth; // Para obter o usuário logado
@@ -11,6 +12,9 @@ class DashboardController extends Controller
 {
     public function index()
     {
+        $user = Auth::user(); // Obtém o usuário logado
+        $groups = Group::get();
+        // dd($user->group_ids, $groups);
         // Tipos de documentos que compõem ADLP
         $tiposADLP = ['DECRETO', 'ATO', 'LEI', 'PORTARIA'];
 
@@ -74,8 +78,9 @@ class DashboardController extends Controller
         if (!empty($aggregationResult[0]['adlpTotal'])) {
             $totalADLP = $aggregationResult[0]['adlpTotal'][0]['total'] ?? 0;
         }
-
         return Inertia::render('Dashboard', [
+            'user' => $user, // Passa o usuário logado
+            'groups' => $groups, // Passa os grupos disponíveis
             'documents' => $finalDocumentCounts,
             'totalADLP' => $totalADLP, // Passa a soma de ADLP separadamente
         ]);
