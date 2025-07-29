@@ -265,7 +265,7 @@ const breadcrumbs: BreadcrumbItem[] = [
           </div>
         </div>
       </div>
-      <div v-if="props.documents.links.length > 3" class="mt-6 flex justify-center">
+      <div v-if="props.documents.links && props.documents.links.length > 3" class="mt-6 flex justify-center">
         <div class="flex flex-wrap -mb-1">
           <template v-for="(link, key) in props.documents.links" :key="key">
             <div v-if="link.url === null"

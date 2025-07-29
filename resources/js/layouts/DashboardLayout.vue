@@ -357,7 +357,7 @@ onBeforeUnmount(() => {
                 </div>
             </header>
 
-            <main class="flex-1 p-6 overflow-y-auto bg-background">
+            <main class="flex-1 p-6 overflow-y-auto bg-background dark:bg-neutral-800">
                 <div v-if="successMessage"
                     class="w-fit max-w-lg mx-auto mb-4 rounded-full bg-green-100 px-6 py-2 text-sm font-medium text-green-800 shadow-lg">
                     {{ successMessage }}
