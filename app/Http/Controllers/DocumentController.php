@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\ImportDocumentRequest;
+use App\Jobs\ImportDocumentsJob;
 use App\Models\Document;
 use App\Models\Group;
 use App\Models\User;
@@ -72,7 +73,7 @@ class DocumentController extends Controller
                     $q->where(function ($tagQuery) use ($tagsArray) {
                         foreach ($tagsArray as $tag) {
                             // Busca parcial (semelhante ao LIKE) e sem case sensitive
-                            $regex = new \MongoDB\BSON\Regex($tag, 'i'); // 'i' ignora case
+                            $regex = new regex($tag, 'i'); // 'i' ignora case
                             $tagQuery->orWhere('tags', 'regexp', $regex);
                         }
                     });
@@ -246,156 +247,192 @@ class DocumentController extends Controller
         if (!$user) {
             abort(401, 'Não autenticado.');
         }
-
+    
         if (!$user->isAdmin()) {
             $userGroupObjectIds = $user->group_ids;
             $uploadersGroup = Group::where('name', 'UPLOADERS')->first();
-
+        
             $canProcessImport = false;
             if ($uploadersGroup) {
                 $canProcessImport = in_array((string) $uploadersGroup->_id, array_map(fn($id) => (string) $id, $userGroupObjectIds));
             }
-
+        
             if (!$canProcessImport) {
                 abort(403, 'Você não tem permissão para processar a importação de documentos.');
             }
         }
-
+    
         $file = $request->file('csv_file');
-        $filePath = $file->getPathname();
-
-        $readGroupIds = collect(array_filter($request->input('read_group_ids', [])))
-            ->map(fn($id) => new ObjectId($id))
-            ->toArray();
-
-        $writeGroupIds = collect(array_filter($request->input('write_group_ids', [])))
-            ->map(fn($id) => new ObjectId($id))
-            ->toArray();
-
-        $importedCount = 0;
-        $skippedCount = 0;
-        $errors = [];
-
-        try {
-            $splFile = new SplFileObject($filePath, 'r');
-            $splFile->setFlags(SplFileObject::READ_CSV | SplFileObject::SKIP_EMPTY | SplFileObject::READ_AHEAD);
-
-            $header = [];
-            $firstRow = true;
-
-            foreach ($splFile as $row) {
-                if ($firstRow) {
-                    $header = array_map('trim', $row);
-                    $firstRow = false;
-                    continue;
-                }
-
-                if (empty(array_filter($row))) {
-                    continue;
-                }
-
-                if (count($header) !== count($row)) {
-                    $errors[] = "Linha ignorada devido a número de colunas inconsistente: " . json_encode($row);
-                    Log::warning("CSV Import: Linha com colunas inconsistentes.", ['row' => $row]);
-                    $skippedCount++;
-                    continue;
-                }
-
-                $data = array_combine($header, array_map('trim', $row));
-
-                $filename = $data['filename'] ?? null;
-                $fileLocationPath = $data['file_location_path'] ?? null;
-
-                if (!$filename || !$fileLocationPath) {
-                    $errors[] = "Linha ignorada por falta de 'filename' ou 'file_location_path': " . json_encode($data);
-                    Log::warning("CSV Import: Linha ignorada por falta de 'filename' ou 'file_location_path'.", ['data' => $data]);
-                    $skippedCount++;
-                    continue;
-                }
-
-                $existingDocument = Document::where('filename', $filename)
-                    ->where('file_location.path', $fileLocationPath)
-                    ->first();
-
-                if ($existingDocument) {
-                    $errors[] = "Documento duplicado encontrado e ignorado: {$filename} em {$fileLocationPath}";
-                    Log::info("CSV Import: Documento duplicado ignorado.", ['filename' => $filename, 'path' => $fileLocationPath]);
-                    $skippedCount++;
-                    continue;
-                }
-
-                $documentData = [
-                    'title' => $data['title'] ?? null,
-                    'filename' => $filename,
-                    'file_extension' => $data['file_extension'] ?? null,
-                    'mime_type' => $data['mime_type'] ?? null,
-                    'upload_date' => isset($data['upload_date']) ? Carbon::parse($data['upload_date']) : Carbon::now(),
-                    'uploaded_by' => new ObjectId($user->id),
-                    'status' => $data['status'] ?? 'active',
-                ];
-
-                $documentData['metadata'] = [];
-                $documentData['metadata']['document_type'] = $data['metadata_document_type'] ?? null;
-                $documentData['metadata']['document_year'] = (int) ($data['metadata_document_year'] ?? 0);
-
-                foreach ($data as $csvHeader => $value) {
-                    if (
-                        str_starts_with($csvHeader, 'metadata_') &&
-                        $csvHeader !== 'metadata_document_type' &&
-                        $csvHeader !== 'metadata_document_year'
-                    ) {
-                        $metadataFieldName = substr($csvHeader, strlen('metadata_'));
-                        $documentData['metadata'][$metadataFieldName] = $value;
-                    }
-                }
-
-                if (isset($data['tags']) && !empty($data['tags'])) {
-                    $documentData['tags'] = array_map('trim', explode('|', $data['tags']));
-                } else {
-                    $documentData['tags'] = [];
-                }
-
-                // ✅ Adiciona tag ADLP automaticamente se o tipo de documento for um dos desejados
-                $documentType = strtoupper(trim($documentData['metadata']['document_type'] ?? ''));
-                if (in_array($documentType, ['DECRETO', 'ATO', 'LEI', 'PORTARIA'])) {
-                    $documentData['tags'][] = 'ADLP';
-                }
-
-                // ✅ Evita tags duplicadas
-                $documentData['tags'] = array_map(fn($tag) => strtoupper(trim($tag)), $documentData['tags']);
-                $documentData['tags'] = array_unique($documentData['tags']);
-
-                $documentData['permissions'] = [
-                    'read_group_ids' => $readGroupIds,
-                    'write_group_ids' => $writeGroupIds,
-                ];
-
-                $documentData['file_location'] = [
-                    'path' => $fileLocationPath,
-                    'storage_type' => $data['file_location_storage_type'] ?? 'file_server',
-                    'bucket_name' => $data['file_location_bucket_name'] ?? null,
-                ];
-
-                Document::create($documentData);
-                $importedCount++;
-                Log::info("CSV Import: Documento importado: {$filename}");
-            }
-
-            unlink($filePath);
-
-            $message = "Importação concluída. Total importados: {$importedCount}, Total ignorados: {$skippedCount}.";
-            if (!empty($errors)) {
-                $message .= " Verifique os detalhes dos erros abaixo.";
-                return redirect()->back()->with('success', $message)->with('importErrors', $errors);
-            }
-
-            return redirect()->back()->with('success', $message);
-
-        } catch (\Exception $e) {
-            Log::error("CSV Import Error: " . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
-            $errors[] = "Ocorreu um erro inesperado: " . $e->getMessage();
-            return redirect()->back()->with('error', "Ocorreu um erro grave durante a importação. Verifique os logs do servidor.")->with('importErrors', $errors);
-        }
+        $tempPath = $file->store('imports/tmp');
+    
+        ImportDocumentsJob::dispatch(
+            $user,
+            $tempPath,
+            $request->input('read_group_ids', []),
+            $request->input('write_group_ids', [])
+        );
+    
+        return redirect()->back()->with('success', 'Importação em andamento. Você será notificado ao final.');
     }
+
+
+    //public function processImport(ImportDocumentRequest $request)
+    //{
+        
+    //    $user = Auth::user();
+    //    if (!$user) {
+    //        abort(401, 'Não autenticado.');
+    //    }
+//
+    //    if (!$user->isAdmin()) {
+    //        $userGroupObjectIds = $user->group_ids;
+    //        $uploadersGroup = Group::where('name', 'UPLOADERS')->first();
+//
+    //        $canProcessImport = false;
+    //        if ($uploadersGroup) {
+    //            $canProcessImport = in_array((string) $uploadersGroup->_id, array_map(fn($id) => (string) $id, $userGroupObjectIds));
+    //        }
+//
+    //        if (!$canProcessImport) {
+    //            abort(403, 'Você não tem permissão para processar a importação de documentos.');
+    //        }
+    //    }
+//
+    //    $file = $request->file('csv_file');
+    //    $filePath = $file->getPathname();
+//
+    //    $readGroupIds = collect(array_filter($request->input('read_group_ids', [])))
+    //        ->map(fn($id) => new ObjectId($id))
+    //        ->toArray();
+//
+    //    $writeGroupIds = collect(array_filter($request->input('write_group_ids', [])))
+    //        ->map(fn($id) => new ObjectId($id))
+    //        ->toArray();
+//
+    //    $importedCount = 0;
+    //    $skippedCount = 0;
+    //    $errors = [];
+//
+    //    try {
+    //        $splFile = new SplFileObject($filePath, 'r');
+    //        $splFile->setFlags(SplFileObject::READ_CSV | SplFileObject::SKIP_EMPTY | SplFileObject::READ_AHEAD);
+//
+    //        $header = [];
+    //        $firstRow = true;
+//
+    //        foreach ($splFile as $row) {
+    //            if ($firstRow) {
+    //                $header = array_map('trim', $row);
+    //                $firstRow = false;
+    //                continue;
+    //            }
+//
+    //            if (empty(array_filter($row))) {
+    //                continue;
+    //            }
+//
+    //            if (count($header) !== count($row)) {
+    //                $errors[] = "Linha ignorada devido a número de colunas inconsistente: " . json_encode($row);
+    //                Log::warning("CSV Import: Linha com colunas inconsistentes.", ['row' => $row]);
+    //                $skippedCount++;
+    //                continue;
+    //            }
+//
+    //            $data = array_combine($header, array_map('trim', $row));
+//
+    //            $filename = $data['filename'] ?? null;
+    //            $fileLocationPath = $data['file_location_path'] ?? null;
+//
+    //            if (!$filename || !$fileLocationPath) {
+    //                $errors[] = "Linha ignorada por falta de 'filename' ou 'file_location_path': " . json_encode($data);
+    //                Log::warning("CSV Import: Linha ignorada por falta de 'filename' ou 'file_location_path'.", ['data' => $data]);
+    //                $skippedCount++;
+    //                continue;
+    //            }
+//
+    //            $existingDocument = Document::where('filename', $filename)
+    //                ->where('file_location.path', $fileLocationPath)
+    //                ->first();
+//
+    //            if ($existingDocument) {
+    //                $errors[] = "Documento duplicado encontrado e ignorado: {$filename} em {$fileLocationPath}";
+    //                Log::info("CSV Import: Documento duplicado ignorado.", ['filename' => $filename, 'path' => $fileLocationPath]);
+    //                $skippedCount++;
+    //                continue;
+    //            }
+//
+    //            $documentData = [
+    //                'title' => $data['title'] ?? null,
+    //                'filename' => $filename,
+    //                'file_extension' => $data['file_extension'] ?? null,
+    //                'mime_type' => $data['mime_type'] ?? null,
+    //                'upload_date' => isset($data['upload_date']) ? Carbon::parse($data['upload_date']) : Carbon::now(),
+    //                'uploaded_by' => new ObjectId($user->id),
+    //                'status' => $data['status'] ?? 'active',
+    //            ];
+//
+    //            $documentData['metadata'] = [];
+    //            $documentData['metadata']['document_type'] = $data['metadata_document_type'] ?? null;
+    //            $documentData['metadata']['document_year'] = (int) ($data['metadata_document_year'] ?? 0);
+//
+    //            foreach ($data as $csvHeader => $value) {
+    //                if (
+    //                    str_starts_with($csvHeader, 'metadata_') &&
+    //                    $csvHeader !== 'metadata_document_type' &&
+    //                    $csvHeader !== 'metadata_document_year'
+    //                ) {
+    //                    $metadataFieldName = substr($csvHeader, strlen('metadata_'));
+    //                    $documentData['metadata'][$metadataFieldName] = $value;
+    //                }
+    //            }
+//
+    //            if (isset($data['tags']) && !empty($data['tags'])) {
+    //                $documentData['tags'] = array_map('trim', explode('|', $data['tags']));
+    //            } else {
+    //                $documentData['tags'] = [];
+    //            }
+//
+    //            // ✅ Adiciona tag ADLP automaticamente se o tipo de documento for um dos desejados
+    //            $documentType = strtoupper(trim($documentData['metadata']['document_type'] ?? ''));
+    //            if (in_array($documentType, ['DECRETO', 'ATO', 'LEI', 'PORTARIA'])) {
+    //                $documentData['tags'][] = 'ADLP';
+    //            }
+//
+    //            // ✅ Evita tags duplicadas
+    //            $documentData['tags'] = array_map(fn($tag) => strtoupper(trim($tag)), $documentData['tags']);
+    //            $documentData['tags'] = array_unique($documentData['tags']);
+//
+    //            $documentData['permissions'] = [
+    //                'read_group_ids' => $readGroupIds,
+    //                'write_group_ids' => $writeGroupIds,
+    //            ];
+//
+    //            $documentData['file_location'] = [
+    //                'path' => $fileLocationPath,
+    //                'storage_type' => $data['file_location_storage_type'] ?? 'file_server',
+    //                'bucket_name' => $data['file_location_bucket_name'] ?? null,
+    //            ];
+//
+    //            Document::create($documentData);
+    //            $importedCount++;
+    //            Log::info("CSV Import: Documento importado: {$filename}");
+    //        }
+//
+    //        unlink($filePath);
+//
+    //        $message = "Importação concluída. Total importados: {$importedCount}, Total ignorados: {$skippedCount}.";
+    //        if (!empty($errors)) {
+    //            $message .= " Verifique os detalhes dos erros abaixo.";
+    //            return redirect()->back()->with('success', $message)->with('importErrors', $errors);
+    //        }
+//
+    //        return redirect()->back()->with('success', $message);
+//
+    //    } catch (\Exception $e) {
+    //        Log::error("CSV Import Error: " . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
+    //        $errors[] = "Ocorreu um erro inesperado: " . $e->getMessage();
+    //        return redirect()->back()->with('error', "Ocorreu um erro grave durante a importação. Verifique os logs do servidor.")->with('importErrors', $errors);
+    //    }
+   // }
 
 }
