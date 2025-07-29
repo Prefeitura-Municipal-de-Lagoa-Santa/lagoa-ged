@@ -16,6 +16,7 @@ use MongoDB\BSON\ObjectId;
 use MongoDB\BSON\regex;
 use SplFileObject;
 use Storage;
+use Illuminate\Support\Facades\Redis;
 
 class DocumentController extends Controller
 {

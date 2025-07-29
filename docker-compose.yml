@@ -7,7 +7,7 @@ services:
     restart: unless-stopped
     ports:
       # Expõe a aplicação na porta 8000
-      - "8000:80"
+      - "8001:80"
     volumes:
       - .:/var/www/html
     networks:
@@ -27,8 +27,6 @@ services:
       MONGO_INITDB_ROOT_USERNAME: mongolsapps
       MONGO_INITDB_ROOT_PASSWORD: DlBD4TrCAesSJl4kBwSBho6
       #MONGO_INITDB_DATABASE: lagoa_ged_db 
-    volumes:
-      - mongo_data_lagoa:/data/db # Volume persistente para os dados do MongoDB
     networks:
       - rede_geral_existente # Conecta à mesma rede que a aplicação Laravel
   
@@ -39,9 +37,9 @@ services:
     ports:
       # Expõe a aplicação na porta 8000
       - "6679:6379"
-    environment:
-      MONGO_INITDB_ROOT_USERNAME: redislsapps
-      MONGO_INITDB_ROOT_PASSWORD: ByE7rbQb82gbWMuxZc8w
+    #environment:
+    #  REDIS_INITDB_ROOT_USERNAME: redislsapps
+    #  REDIS_INITDB_ROOT_PASSWORD: ByE7rbQb82gbWMuxZc8w
       #MONGO_INITDB_DATABASE: lagoa_ged_db
     networks:
       - rede_geral_existente # Conecta à mesma rede que a aplicação Laravel
@@ -50,4 +48,4 @@ networks:
   rede_geral_existente:
     external: true
     # Garanta que este é o nome exato da sua rede externa
-    name: local_network
+    name: rede_dados_geral

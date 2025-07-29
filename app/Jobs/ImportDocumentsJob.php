@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Foundation\Bus\Dispatchable;
 use MongoDB\BSON\ObjectId;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Redis;
 
 class ImportDocumentsJob implements ShouldQueue
 {
