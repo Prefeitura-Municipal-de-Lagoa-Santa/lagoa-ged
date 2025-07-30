@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, onBeforeUnmount, watch, computed } from 'vue';
 import { Link, router, Head, usePage } from '@inertiajs/vue3';
-import { CircleUserRoundIcon, File, House, LogOut, Menu, Minus, MoonIcon, Palette, Sun, SunMoon, Headset, MonitorCogIcon, User, Shield, } from 'lucide-vue-next';
+import { CircleUserRoundIcon, File, House, LogOut, Menu, Minus, MoonIcon, Palette, Sun, SunMoon, Headset, MonitorCogIcon, Shield, FileCogIcon, UserCog2, } from 'lucide-vue-next';
 import type { BreadcrumbItemType } from '@/types';
 
 interface Props {
@@ -262,8 +262,14 @@ onBeforeUnmount(() => {
                             <Link :href="route('users.index')"
                                 class="flex items-center p-2 rounded-md transition-colors duration-200 group text-sm"
                                 :class="[route().current('users.index') ? 'bg-cyan-700 text-sidebar-primary-foreground' : 'hover:bg-sidebar-accent hover:text-sidebar-accent-foreground']">
-                            <User class="w-4 h-4 mr-2" />
+                            <UserCog2 class="w-4 h-4 mr-2" />
                             <span>Usuários</span>
+                            </Link>
+                            <Link :href="route('users.index')"
+                                class="flex items-center p-2 rounded-md transition-colors duration-200 group text-sm"
+                                :class="[route().current('users.index') ? 'bg-cyan-700 text-sidebar-primary-foreground' : 'hover:bg-sidebar-accent hover:text-sidebar-accent-foreground']">
+                            <FileCogIcon class="w-4 h-4 mr-2" />
+                            <span>Documentos</span>
                             </Link>
                         </div>
                     </li>
