@@ -2,7 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\BatchUpdateDocumentPermissionsRequest;
 use App\Http\Requests\ImportDocumentRequest;
+use App\Jobs\BatchUpdateDocumentPermissionsJob;
 use App\Jobs\ImportDocumentsJob;
 use App\Models\Document;
 use App\Models\Group;
@@ -18,8 +20,80 @@ use SplFileObject;
 use Storage;
 use Illuminate\Support\Facades\Redis;
 
-class DocumentController extends Controller
-{
+class DocumentController extends Controller{
+    /**
+     * Exibe o formulário de edição de um documento
+     */
+    public function edit(Document $document)
+    {
+        $user = Auth::user();
+        if (!$user) {
+            abort(401, 'Não autenticado.');
+        }
+
+        $canEdit = false;
+        if ($user->isAdmin()) {
+            $canEdit = true;
+        } else {
+            $userGroupObjectIds = $user->group_ids;
+            $documentWriteGroupIds = $document->permissions['write_group_ids'] ?? [];
+            $userGroupStrings = array_map(fn($id) => (string) $id, $userGroupObjectIds);
+            $documentWriteGroupStrings = array_map(fn($id) => (string) $id, $documentWriteGroupIds);
+            $canEdit = !empty(array_intersect($userGroupStrings, $documentWriteGroupStrings));
+        }
+        if (!$canEdit) {
+            abort(403, 'Você não tem permissão para editar este documento.');
+        }
+
+        $groups = Group::all(['_id', 'name']);
+        return Inertia::render('documents/edit', [
+            'document' => $document,
+            'groups' => $groups,
+        ]);
+    }
+
+    /**
+     * Atualiza os dados do documento
+     */
+    public function update(\App\Http\Requests\UpdateDocumentRequest $request, Document $document)
+    {
+        $user = Auth::user();
+        if (!$user) {
+            abort(401, 'Não autenticado.');
+        }
+
+        $canEdit = false;
+        if ($user->isAdmin()) {
+            $canEdit = true;
+        } else {
+            $userGroupObjectIds = $user->group_ids;
+            $documentWriteGroupIds = $document->permissions['write_group_ids'] ?? [];
+            $userGroupStrings = array_map(fn($id) => (string) $id, $userGroupObjectIds);
+            $documentWriteGroupStrings = array_map(fn($id) => (string) $id, $documentWriteGroupIds);
+            $canEdit = !empty(array_intersect($userGroupStrings, $documentWriteGroupStrings));
+        }
+        if (!$canEdit) {
+            abort(403, 'Você não tem permissão para editar este documento.');
+        }
+
+        $validated = $request->validated();
+
+        $document->title = $validated['title'];
+        if (isset($validated['metadata'])) {
+            $document->metadata = $validated['metadata'];
+        }
+        if (isset($validated['tags'])) {
+            $document->tags = $validated['tags'];
+        }
+        if (isset($validated['permissions'])) {
+            $document->permissions = array_merge($document->permissions ?? [], $validated['permissions']);
+        }
+
+        $document->save();
+
+        return redirect()->route('documents.show', $document->_id)->with('success', 'Documento atualizado com sucesso!');
+    }
+
     public function index(Request $request)
     {
         $user = Auth::user();
@@ -276,164 +350,148 @@ class DocumentController extends Controller
         return redirect()->back()->with('success', 'Importação em andamento. Você será notificado ao final.');
     }
 
+    public function batchPermissions(Request $request)
+    {
+        $query = Document::query();
 
-    //public function processImport(ImportDocumentRequest $request)
-    //{
+        // Filtros semelhantes à index usando MongoDB regex
+        $filters = $request->only(['title', 'tags', 'document_year', 'other_metadata']);
+
+        $query->where(function ($q) use ($filters) {
+            // Filtro por Título
+            if (!empty($filters['title'])) {
+                $pattern = new regex('.*' . preg_quote($filters['title'], '/') . '.*', 'i');
+                $q->where('title', 'regex', $pattern);
+            }
+
+            // Filtro por Tags
+            if (!empty($filters['tags'])) {
+                $tagsArray = array_map('trim', explode(',', $filters['tags']));
+                $tagsArray = array_filter($tagsArray);
+
+                if (!empty($tagsArray)) {
+                    $q->where(function ($tagQuery) use ($tagsArray) {
+                        foreach ($tagsArray as $tag) {
+                            $regex = new regex($tag, 'i');
+                            $tagQuery->orWhere('tags', 'regexp', $regex);
+                        }
+                    });
+                }
+            }
+
+            // Filtro por Ano do Documento
+            if (!empty($filters['document_year'])) {
+                $year = (int) $filters['document_year'];
+                if ($year > 0) {
+                    $q->where('metadata.document_year', $year);
+                }
+            }
+
+            // Filtro por Outros Metadados
+            if (!empty($filters['other_metadata']) && is_string($filters['other_metadata'])) {
+                $escapedSearchText = preg_quote($filters['other_metadata'], '/');
+                $pattern = new regex('.*' . $escapedSearchText . '.*', 'i');
+
+                $searchableMetadataFields = ['document_number', 'document_type'];
+                $q->where(function ($orQuery) use ($pattern, $searchableMetadataFields) {
+                    foreach ($searchableMetadataFields as $field) {
+                        $orQuery->orWhere('metadata.' . $field, 'regex', $pattern);
+                    }
+                });
+            }
+        });
+
+        $documents = $query->select(['id', 'title', 'metadata'])->paginate(20)->withQueryString();
+        $groups = Group::select(['id', 'name'])->get();
+
+        // Para o filtro de anos
+        $years = $this->getAvailableYears();
+
+        return Inertia::render('documents/batch-permissions', [
+            'documents' => $documents,
+            'groups' => $groups,
+            'filters' => $filters,
+            'years' => $years,
+        ]);
+    }
+
+    public function batchPermissionsUpdate(BatchUpdateDocumentPermissionsRequest $request)
+    {
+        Log::info('batchPermissionsUpdate chamado', [
+            'request_data' => $request->all(),
+            'is_preview' => $request->input('preview', false)
+        ]);
+
+        $documentIds = $request->input('document_ids', []);
+        $readGroupIds = $request->input('read_group_ids', []);
+        $writeGroupIds = $request->input('write_group_ids', []);
+
+        // Converter os IDs para ObjectIds usando a mesma abordagem do ImportDocumentsJob
+        $readGroupObjectIds = collect(array_filter($readGroupIds))
+            ->map(fn($id) => new ObjectId($id))
+            ->toArray();
+
+        $writeGroupObjectIds = collect(array_filter($writeGroupIds))
+            ->map(fn($id) => new ObjectId($id))
+            ->toArray();
+
         
-    //    $user = Auth::user();
-    //    if (!$user) {
-    //        abort(401, 'Não autenticado.');
-    //    }
-//
-    //    if (!$user->isAdmin()) {
-    //        $userGroupObjectIds = $user->group_ids;
-    //        $uploadersGroup = Group::where('name', 'UPLOADERS')->first();
-//
-    //        $canProcessImport = false;
-    //        if ($uploadersGroup) {
-    //            $canProcessImport = in_array((string) $uploadersGroup->_id, array_map(fn($id) => (string) $id, $userGroupObjectIds));
-    //        }
-//
-    //        if (!$canProcessImport) {
-    //            abort(403, 'Você não tem permissão para processar a importação de documentos.');
-    //        }
-    //    }
-//
-    //    $file = $request->file('csv_file');
-    //    $filePath = $file->getPathname();
-//
-    //    $readGroupIds = collect(array_filter($request->input('read_group_ids', [])))
-    //        ->map(fn($id) => new ObjectId($id))
-    //        ->toArray();
-//
-    //    $writeGroupIds = collect(array_filter($request->input('write_group_ids', [])))
-    //        ->map(fn($id) => new ObjectId($id))
-    //        ->toArray();
-//
-    //    $importedCount = 0;
-    //    $skippedCount = 0;
-    //    $errors = [];
-//
-    //    try {
-    //        $splFile = new SplFileObject($filePath, 'r');
-    //        $splFile->setFlags(SplFileObject::READ_CSV | SplFileObject::SKIP_EMPTY | SplFileObject::READ_AHEAD);
-//
-    //        $header = [];
-    //        $firstRow = true;
-//
-    //        foreach ($splFile as $row) {
-    //            if ($firstRow) {
-    //                $header = array_map('trim', $row);
-    //                $firstRow = false;
-    //                continue;
-    //            }
-//
-    //            if (empty(array_filter($row))) {
-    //                continue;
-    //            }
-//
-    //            if (count($header) !== count($row)) {
-    //                $errors[] = "Linha ignorada devido a número de colunas inconsistente: " . json_encode($row);
-    //                Log::warning("CSV Import: Linha com colunas inconsistentes.", ['row' => $row]);
-    //                $skippedCount++;
-    //                continue;
-    //            }
-//
-    //            $data = array_combine($header, array_map('trim', $row));
-//
-    //            $filename = $data['filename'] ?? null;
-    //            $fileLocationPath = $data['file_location_path'] ?? null;
-//
-    //            if (!$filename || !$fileLocationPath) {
-    //                $errors[] = "Linha ignorada por falta de 'filename' ou 'file_location_path': " . json_encode($data);
-    //                Log::warning("CSV Import: Linha ignorada por falta de 'filename' ou 'file_location_path'.", ['data' => $data]);
-    //                $skippedCount++;
-    //                continue;
-    //            }
-//
-    //            $existingDocument = Document::where('filename', $filename)
-    //                ->where('file_location.path', $fileLocationPath)
-    //                ->first();
-//
-    //            if ($existingDocument) {
-    //                $errors[] = "Documento duplicado encontrado e ignorado: {$filename} em {$fileLocationPath}";
-    //                Log::info("CSV Import: Documento duplicado ignorado.", ['filename' => $filename, 'path' => $fileLocationPath]);
-    //                $skippedCount++;
-    //                continue;
-    //            }
-//
-    //            $documentData = [
-    //                'title' => $data['title'] ?? null,
-    //                'filename' => $filename,
-    //                'file_extension' => $data['file_extension'] ?? null,
-    //                'mime_type' => $data['mime_type'] ?? null,
-    //                'upload_date' => isset($data['upload_date']) ? Carbon::parse($data['upload_date']) : Carbon::now(),
-    //                'uploaded_by' => new ObjectId($user->id),
-    //                'status' => $data['status'] ?? 'active',
-    //            ];
-//
-    //            $documentData['metadata'] = [];
-    //            $documentData['metadata']['document_type'] = $data['metadata_document_type'] ?? null;
-    //            $documentData['metadata']['document_year'] = (int) ($data['metadata_document_year'] ?? 0);
-//
-    //            foreach ($data as $csvHeader => $value) {
-    //                if (
-    //                    str_starts_with($csvHeader, 'metadata_') &&
-    //                    $csvHeader !== 'metadata_document_type' &&
-    //                    $csvHeader !== 'metadata_document_year'
-    //                ) {
-    //                    $metadataFieldName = substr($csvHeader, strlen('metadata_'));
-    //                    $documentData['metadata'][$metadataFieldName] = $value;
-    //                }
-    //            }
-//
-    //            if (isset($data['tags']) && !empty($data['tags'])) {
-    //                $documentData['tags'] = array_map('trim', explode('|', $data['tags']));
-    //            } else {
-    //                $documentData['tags'] = [];
-    //            }
-//
-    //            // ✅ Adiciona tag ADLP automaticamente se o tipo de documento for um dos desejados
-    //            $documentType = strtoupper(trim($documentData['metadata']['document_type'] ?? ''));
-    //            if (in_array($documentType, ['DECRETO', 'ATO', 'LEI', 'PORTARIA'])) {
-    //                $documentData['tags'][] = 'ADLP';
-    //            }
-//
-    //            // ✅ Evita tags duplicadas
-    //            $documentData['tags'] = array_map(fn($tag) => strtoupper(trim($tag)), $documentData['tags']);
-    //            $documentData['tags'] = array_unique($documentData['tags']);
-//
-    //            $documentData['permissions'] = [
-    //                'read_group_ids' => $readGroupIds,
-    //                'write_group_ids' => $writeGroupIds,
-    //            ];
-//
-    //            $documentData['file_location'] = [
-    //                'path' => $fileLocationPath,
-    //                'storage_type' => $data['file_location_storage_type'] ?? 'file_server',
-    //                'bucket_name' => $data['file_location_bucket_name'] ?? null,
-    //            ];
-//
-    //            Document::create($documentData);
-    //            $importedCount++;
-    //            Log::info("CSV Import: Documento importado: {$filename}");
-    //        }
-//
-    //        unlink($filePath);
-//
-    //        $message = "Importação concluída. Total importados: {$importedCount}, Total ignorados: {$skippedCount}.";
-    //        if (!empty($errors)) {
-    //            $message .= " Verifique os detalhes dos erros abaixo.";
-    //            return redirect()->back()->with('success', $message)->with('importErrors', $errors);
-    //        }
-//
-    //        return redirect()->back()->with('success', $message);
-//
-    //    } catch (\Exception $e) {
-    //        Log::error("CSV Import Error: " . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
-    //        $errors[] = "Ocorreu um erro inesperado: " . $e->getMessage();
-    //        return redirect()->back()->with('error', "Ocorreu um erro grave durante a importação. Verifique os logs do servidor.")->with('importErrors', $errors);
-    //    }
-   // }
+        // Se for apenas preview, retorna as mudanças
+        if ($request->input('preview', false)) {
+            Log::info('Executando preview das mudanças');
+            return $this->previewBatchChanges($documentIds, $readGroupObjectIds, $writeGroupObjectIds);
+        }
+        
+        Log::info('Executando atualização em lote', [
+            'document_count' => count($documentIds),
+            'read_groups_count' => count($readGroupObjectIds),
+            'write_groups_count' => count($writeGroupObjectIds)
+        ]);
+        //dd($readGroupObjectIds, $writeGroupObjectIds);
+        BatchUpdateDocumentPermissionsJob::dispatch($documentIds, $readGroupObjectIds, $writeGroupObjectIds, $request->user()->id);
+        return redirect()->route('documents.index')->with('success', 'Atualização em lote iniciada!');
+    }
+    
+    private function previewBatchChanges($documentIds, $readGroupIds, $writeGroupIds)
+    {
+        $documents = Document::whereIn('_id', $documentIds)->get(['_id', 'title', 'permissions']);
+        $groups = Group::whereIn('_id', array_merge($readGroupIds, $writeGroupIds))->get(['_id', 'name']);
+        
+        $changes = [];
+        foreach ($documents as $document) {
+            $currentReadGroups = $document->permissions['read_group_ids'] ?? [];
+            $currentWriteGroups = $document->permissions['write_group_ids'] ?? [];
+            
+            // Converter ObjectIds atuais para strings para comparação
+            $currentReadGroupStrings = array_map(fn($id) => (string) $id, $currentReadGroups);
+            $currentWriteGroupStrings = array_map(fn($id) => (string) $id, $currentWriteGroups);
+            
+            $readGroupsToAdd = array_diff($readGroupIds, $currentReadGroupStrings);
+            $readGroupsToRemove = array_diff($currentReadGroupStrings, $readGroupIds);
+            $writeGroupsToAdd = array_diff($writeGroupIds, $currentWriteGroupStrings);
+            $writeGroupsToRemove = array_diff($currentWriteGroupStrings, $writeGroupIds);
+            
+            if (!empty($readGroupsToAdd) || !empty($readGroupsToRemove) || !empty($writeGroupsToAdd) || !empty($writeGroupsToRemove)) {
+                $changes[] = [
+                    'document_id' => (string) $document->_id,
+                    'document_title' => $document->title,
+                    'read_groups_to_add' => $readGroupsToAdd,
+                    'read_groups_to_remove' => $readGroupsToRemove,
+                    'write_groups_to_add' => $writeGroupsToAdd,
+                    'write_groups_to_remove' => $writeGroupsToRemove,
+                ];
+            }
+        }
+        
+        return response()->json([
+            'changes' => $changes,
+            'groups' => $groups,
+            'total_documents' => count($documents),
+            'documents_with_changes' => count($changes),
+        ]);
+    }
+
+
+    
 
 }

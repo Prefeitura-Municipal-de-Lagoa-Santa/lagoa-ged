@@ -3,7 +3,7 @@ import DashboardLayout from '@/layouts/DashboardLayout.vue';
 import { Head, Link, router } from '@inertiajs/vue3';
 import { ref, watch } from 'vue';
 import { Button } from '@/components/ui/button';
-import { Eye, FilePlus, Pencil, Plus, Trash, ChevronDown, ChevronUp } from 'lucide-vue-next';
+import { Eye, FilePlus, Pencil, Plus, Trash, ChevronDown, ChevronUp, SquarePen, Filter, X } from 'lucide-vue-next';
 import { BreadcrumbItem } from '@/types';
 
 interface Document {
@@ -111,24 +111,24 @@ const breadcrumbs: BreadcrumbItem[] = [
 
   <DashboardLayout :breadcrumbs="breadcrumbs">
     <div class="container mx-auto py-6 px-4 sm:px-6 lg:px-8">
-      <div class="flex flex-col sm:flex-row justify-between items-center mb-6 gap-4">
+      <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
         <h1 class="text-2xl md:text-3xl font-semibold text-foreground">
           Documentos
         </h1>
-        <Button as-child>
-          <Link :href="route('documents.import')">
-            <FilePlus class="mr-2 h-4 w-4" />
-            Importar Documentos
-          </Link>
-        </Button>
-      </div>
-
-      <div class="mb-4">
-        <Button @click="showFilters = !showFilters" variant="outline">
-          Filtros
-          <ChevronUp v-if="showFilters" class="ml-2 h-4 w-4" />
-          <ChevronDown v-else class="ml-2 h-4 w-4" />
-        </Button>
+        <div class="flex flex-wrap gap-2">
+          <Button @click="showFilters = !showFilters" variant="outline" class="flex items-center gap-2">
+            <Filter class="h-4 w-4" />
+            Filtros
+            <ChevronUp v-if="showFilters" class="h-4 w-4" />
+            <ChevronDown v-else class="h-4 w-4" />
+          </Button>
+          <Button as-child>
+            <Link :href="route('documents.import')" class="flex items-center gap-2">
+              <FilePlus class="h-4 w-4" />
+              Importar Documentos
+            </Link>
+          </Button>
+        </div>
       </div>
 
       <div v-if="showFilters" class="mb-6 p-4 border rounded-lg shadow-md bg-card transition-all duration-300 ease-in-out">
@@ -160,58 +160,61 @@ const breadcrumbs: BreadcrumbItem[] = [
           </div>
         </div>
         <div class="mt-4 flex justify-end">
-          <Button @click="form = { title: '', tags: '', document_year: '', other_metadata: '' }; applyFilters();" variant="outline">
+          <Button @click="form = { title: '', tags: '', document_year: '', other_metadata: '' }; applyFilters();" variant="outline" class="flex items-center gap-2">
+            <X class="h-4 w-4" />
             Limpar Filtros
           </Button>
         </div>
       </div>
 
-      <div class="bg-card p-0 sm:p-6 rounded-lg shadow-md overflow-x-auto hidden md:block">
-        <table class="min-w-full divide-y divide-border">
-          <thead class="bg-muted/60">
-            <tr>
+      <div class="overflow-x-auto bg-gray-900 rounded-lg shadow-md hidden md:block">
+        <table class="min-w-full text-white">
+          <thead class="bg-zinc-700">
+            <tr class="border-b border-gray-700">
               <th scope="col"
-                class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Título
+                class="px-6 py-4 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider">TÍTULO
               </th>
               <th scope="col"
-                class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Tipo de
-                Documento</th>
+                class="px-6 py-4 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider">TIPO DE
+                DOCUMENTO</th>
               <th scope="col"
-                class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Data de
-                Upload</th>
+                class="px-6 py-4 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider">DATA DE
+                UPLOAD</th>
               <th scope="col"
-                class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Formato
-                do Arquivo</th>
-              <th scope="col" class="relative px-6 py-3"><span class="sr-only">Ações</span></th>
+                class="px-6 py-4 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider">FORMATO
+                DO ARQUIVO</th>
+              <th scope="col" class="relative px-6 py-4 text-xs font-semibold text-gray-300 uppercase tracking-wider text-center">AÇÕES</th>
             </tr>
           </thead>
-          <tbody class="bg-card divide-y divide-border">
+          <tbody class="bg-stone-950 divide-y divide-gray-700">
             <tr v-if="props.documents.data.length === 0">
-              <td colspan="5" class="px-6 py-12 text-center text-sm text-muted-foreground">
+              <td colspan="5" class="px-6 py-12 text-center text-sm text-gray-400">
                 Nenhum documento encontrado.
               </td>
             </tr>
 
-            <tr v-for="doc in props.documents.data" :key="doc.id" class="hover:bg-muted/50 transition-colors">
-              <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-foreground">
-                <a :href="route('documents.show', doc.id)">{{ doc.title }}</a>
+            <tr v-for="doc in props.documents.data" :key="doc.id" class="hover:bg-gray-800 transition-colors">
+              <td class="px-6 py-4 text-sm font-medium text-white">
+                <a :href="route('documents.show', doc.id)" class="hover:text-blue-400">{{ doc.title }}</a>
               </td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-muted-foreground">
-                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full"
-                  :class="getTypeBadgeClass(doc.metadata?.document_type)"> {{ doc.metadata?.document_type }} </span>
+              <td class="px-6 py-4 text-sm text-gray-300">
+                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                  {{ doc.metadata?.document_type }}
+                </span>
               </td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-muted-foreground">{{ new
+              <td class="px-6 py-4 text-sm text-gray-300">{{ new
                 Date(doc.upload_date).toLocaleDateString() }}</td>
-              <td class="px-6 py-4 whitespace-nowrap text-sm text-muted-foreground">
-                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full"
-                  :class="getTypeBadgeClass(doc.file_extension)">
+              <td class="px-6 py-4 text-sm text-gray-300">
+                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-900 text-blue-300">
                   {{ doc.file_extension }}
                 </span>
               </td>
-              <td
-                class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-3 flex items-center justify-end">
-                <a :href="route('documents.show', doc.id)" class="text-primary hover:text-primary/80" title="Ver">
-                  <Eye />
+              <td class="px-6 py-4 text-sm font-medium flex items-center justify-center space-x-3">
+                <a :href="route('documents.edit', doc.id)" class="text-green-400 hover:text-green-300" title="Editar">
+                  <SquarePen class="h-5 w-5"/>
+                </a>
+                <a :href="route('documents.show', doc.id)" class="text-white hover:text-gray-300" title="Ver">
+                  <Eye class="h-5 w-5" />
                 </a>
               </td>
             </tr>
@@ -265,7 +268,7 @@ const breadcrumbs: BreadcrumbItem[] = [
           </div>
         </div>
       </div>
-      <div v-if="props.documents.links.length > 3" class="mt-6 flex justify-center">
+      <div v-if="props.documents.links && props.documents.links.length > 3" class="mt-6 flex justify-center">
         <div class="flex flex-wrap -mb-1">
           <template v-for="(link, key) in props.documents.links" :key="key">
             <div v-if="link.url === null"

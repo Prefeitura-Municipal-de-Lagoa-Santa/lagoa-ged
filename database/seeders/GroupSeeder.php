@@ -38,8 +38,8 @@ class GroupSeeder extends Seeder
                 'user_ids' => [],
             ]);
             Group::create([
-                'name' => 'PROJETOS',
-                'description' => 'Documentos de Projetos',
+                'name' => 'PROCESSSOS',
+                'description' => 'Documentos de Processos de Protocolo',
                 'user_ids' => [],
             ]);
             Group::create([
