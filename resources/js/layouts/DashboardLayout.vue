@@ -265,9 +265,9 @@ onBeforeUnmount(() => {
                             <UserCog2 class="w-4 h-4 mr-2" />
                             <span>Usuários</span>
                             </Link>
-                            <Link :href="route('users.index')"
+                            <Link :href="route('documents.batch-permissions')"
                                 class="flex items-center p-2 rounded-md transition-colors duration-200 group text-sm"
-                                :class="[route().current('users.index') ? 'bg-cyan-700 text-sidebar-primary-foreground' : 'hover:bg-sidebar-accent hover:text-sidebar-accent-foreground']">
+                                :class="[route().current('documents.batch-permissions') ? 'bg-cyan-700 text-sidebar-primary-foreground' : 'hover:bg-sidebar-accent hover:text-sidebar-accent-foreground']">
                             <FileCogIcon class="w-4 h-4 mr-2" />
                             <span>Documentos</span>
                             </Link>

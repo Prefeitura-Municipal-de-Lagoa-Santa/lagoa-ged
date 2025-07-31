@@ -11,6 +11,10 @@ const props = defineProps({
         type: Object,
         required: true,
     },
+    canEdit: {
+        type: Boolean,
+        default: false,
+    },
 });
 
 // Usar o composable de tradução
@@ -51,11 +55,18 @@ const allMetadata = computed(() => {
         <div class="container mx-auto py-6 px-4 sm:px-6 lg:px-8">
             <div class="bg-white dark:bg-stone-950 p-6 rounded-lg shadow-md mb-8">
                 <!-- Cabeçalho do card com título e botão de expansão -->
-                <div class="flex items-center justify-between mb-2">
-                    <h1 class="text-2xl dark:text-white md:text-3xl font-semibold text-gray-800">
-                        {{ props.document.title }}
-                    </h1>
-                    
+                <div class="flex flex-col md:flex-row md:items-center md:justify-between mb-2 gap-2">
+                    <div class="flex items-center gap-3">
+                        <h1 class="text-2xl dark:text-white md:text-3xl font-semibold text-gray-800">
+                            {{ props.document.title }}
+                        </h1>
+                        <template v-if="props.canEdit">
+                            <a :href="route('documents.edit', props.document._id || props.document.id)"
+                               class="ml-2 px-3 py-1.5 text-sm font-semibold rounded bg-blue-600 text-white hover:bg-blue-700 transition">
+                                Editar
+                            </a>
+                        </template>
+                    </div>
                     <button 
                         @click="toggleExpansion"
                         class="expand-button flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 rounded-lg hover:bg-gray-100 dark:hover:bg-stone-800 transition-all duration-200 border border-gray-200 dark:border-stone-700 hover:border-gray-300 dark:hover:border-stone-600"
