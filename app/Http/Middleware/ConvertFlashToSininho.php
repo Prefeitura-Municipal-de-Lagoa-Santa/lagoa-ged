@@ -31,19 +31,28 @@ class ConvertFlashToSininho
             return $response;
         }
         
-        // Não processar rotas de API, notificações, ou requisições AJAX
         $path = $request->path();
-        if (str_starts_with($path, 'api/') || 
-            str_contains($path, 'notifications') ||
-            $request->ajax() ||
-            $request->wantsJson() ||
-            $request->expectsJson()) {
+        
+        // Apenas ignorar rotas de API, mas permitir requisições Inertia
+        if (str_starts_with($path, 'api/')) {
             return $response;
         }
         
+        // Log para debug - sempre logar
+        \Log::info('ConvertFlashToSininho: Middleware executado', [
+            'path' => $path,
+            'user_id' => (string) $user->id,
+            'method' => $request->method(),
+            'is_ajax' => $request->ajax(),
+            'wants_json' => $request->wantsJson(),
+            'expects_json' => $request->expectsJson(),
+            'inertia' => $request->header('X-Inertia')
+        ]);
+        
         // Só processar se houver mensagens flash ativas
         $hasFlashMessages = false;
-        foreach (['success', 'error', 'warning', 'info', 'message'] as $type) {
+        $flashTypes = ['success', 'error', 'warning', 'info', 'message'];
+        foreach ($flashTypes as $type) {
             if (Session::has($type)) {
                 $hasFlashMessages = true;
                 break;
@@ -51,19 +60,28 @@ class ConvertFlashToSininho
         }
         
         if (!$hasFlashMessages) {
+            \Log::info('ConvertFlashToSininho: Nenhuma mensagem flash encontrada', [
+                'session_all' => Session::all()
+            ]);
             return $response;
         }
         
+        \Log::info('ConvertFlashToSininho: Mensagens flash encontradas', [
+            'session_flash' => array_filter(Session::all(), function($key) {
+                return in_array($key, ['success', 'error', 'warning', 'info', 'message']);
+            }, ARRAY_FILTER_USE_KEY)
+        ]);
+        
         // Capturar mensagens flash comuns
-        foreach (['success', 'error', 'warning', 'info', 'message'] as $type) {
+        foreach ($flashTypes as $type) {
             if (Session::has($type)) {
                 $message = Session::get($type);
                 if (!empty($message)) {
-                    // Verificar se já existe uma notificação similar recente (últimos 30 segundos)
+                    // Verificar se já existe uma notificação similar recente (últimos 10 segundos)
                     $existingNotification = \App\Models\Notification::forUser($user->id)
                         ->where('message', $message)
                         ->where('type', $type === 'message' ? 'info' : $type)
-                        ->where('created_at', '>=', Carbon::now()->subSeconds(30))
+                        ->where('created_at', '>=', Carbon::now()->subSeconds(10))
                         ->first();
                     
                     if ($existingNotification) {

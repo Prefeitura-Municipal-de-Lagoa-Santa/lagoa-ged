@@ -32,6 +32,7 @@ class ImportDocumentsJob implements ShouldQueue
 
     public function handle()
     {
+        $startTime = microtime(true);
         $user = $this->user;
         $filePath = Storage::path($this->tempPath);
 
@@ -150,14 +151,120 @@ class ImportDocumentsJob implements ShouldQueue
 
             Storage::delete($this->tempPath);
 
+            $duration = round(microtime(true) - $startTime, 2);
+            
             Log::info("CSV Import Job: Finalizado. Importados: {$importedCount}, Ignorados: {$skippedCount}");
             if (!empty($errors)) {
                 Log::warning("CSV Import Job: Erros encontrados", ['errors' => $errors]);
             }
 
+            Log::info("=== CHAMANDO NOTIFICAÇÃO DE CONCLUSÃO ===", [
+                'user_id' => $this->user->id,
+                'imported_count' => $importedCount,
+                'skipped_count' => $skippedCount,
+                'duration' => $duration
+            ]);
+
+            // Enviar notificação de conclusão
+            $this->sendCompletionNotification($importedCount, $skippedCount, $duration);
+
         } catch (\Exception $e) {
+            $duration = round(microtime(true) - $startTime, 2);
+            
             Log::error("CSV Import Job: Erro inesperado - " . $e->getMessage(), [
                 'trace' => $e->getTraceAsString(),
+            ]);
+            
+            Log::info("=== CHAMANDO NOTIFICAÇÃO DE ERRO ===", [
+                'user_id' => $this->user->id,
+                'error' => $e->getMessage(),
+                'duration' => $duration
+            ]);
+            
+            // Enviar notificação de erro
+            $this->sendErrorNotification($e->getMessage(), $duration);
+        }
+    }
+
+    /**
+     * Enviar notificação de conclusão do job
+     */
+    private function sendCompletionNotification($importedCount, $skippedCount, $duration)
+    {
+        try {
+            Log::info("=== INICIANDO SALVAMENTO DE NOTIFICAÇÃO IMPORT ===", [
+                'user_id' => $this->user->id,
+                'imported_count' => $importedCount,
+                'skipped_count' => $skippedCount,
+                'duration' => $duration
+            ]);
+
+            $notificationService = new \App\Services\EnhancedNotificationService();
+            $notification = $notificationService->jobCompleted(
+                $this->user->id,
+                'Importação de Documentos',
+                $importedCount,
+                $skippedCount,
+                (float) $duration,
+                [
+                    'file_path' => $this->tempPath,
+                    'total_processed' => $importedCount + $skippedCount,
+                    'imported' => $importedCount,
+                    'skipped' => $skippedCount
+                ]
+            );
+            
+            Log::info("=== NOTIFICAÇÃO DE IMPORT SALVA NO BANCO ===", [
+                'user_id' => $this->user->id,
+                'notification_id' => $notification ? $notification->id : null,
+                'success' => (bool) $notification,
+                'service' => 'EnhancedNotificationService'
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error("=== ERRO AO SALVAR NOTIFICAÇÃO DE IMPORT ===", [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+        }
+    }
+
+    /**
+     * Enviar notificação de erro no job
+     */
+    private function sendErrorNotification($errorMessage, $duration)
+    {
+        try {
+            Log::info("=== ENVIANDO NOTIFICAÇÃO DE ERRO IMPORT ===", [
+                'user_id' => $this->user->id,
+                'error' => $errorMessage,
+                'duration' => $duration
+            ]);
+
+            $notificationService = new \App\Services\EnhancedNotificationService();
+            $notification = $notificationService->create(
+                $this->user->id,
+                'Erro na Importação de Documentos',
+                "Ocorreu um erro durante a importação: {$errorMessage}",
+                'error',
+                'import',
+                [
+                    'file_path' => $this->tempPath,
+                    'error_message' => $errorMessage,
+                    'duration' => $duration
+                ]
+            );
+            
+            Log::info("=== NOTIFICAÇÃO DE ERRO IMPORT SALVA ===", [
+                'user_id' => $this->user->id,
+                'notification_id' => $notification ? $notification->id : null,
+                'success' => (bool) $notification
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error("=== ERRO AO SALVAR NOTIFICAÇÃO DE ERRO IMPORT ===", [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
             ]);
         }
     }
