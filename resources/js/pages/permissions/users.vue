@@ -57,7 +57,7 @@ const breadcrumbs:BreadcrumbItem[] = [
                 </Button>
             </div>
 
-            <div class="overflow-x-auto bg-gray-900 rounded-lg shadow-md">
+            <div class="overflow-x-auto bg-gray-900 rounded-lg shadow-md hidden md:block">
                 <table class="min-w-full text-white">
                     <thead class="bg-gray-500 dark:bg-zinc-700">
                         <tr class="border-b border-gray-700">
@@ -86,6 +86,39 @@ const breadcrumbs:BreadcrumbItem[] = [
                         </tr>
                     </tbody>
                 </table>
+            </div>
+
+            <!-- Versão Mobile -->
+            <div class="md:hidden">
+                <div v-if="props.users.data.length === 0"
+                    class="bg-card p-6 rounded-lg shadow-md text-center text-sm text-muted-foreground">
+                    Nenhum usuário encontrado.
+                </div>
+                <div v-else class="grid gap-4">
+                    <div v-for="u in props.users.data" :key="u.id"
+                        class="bg-card p-4 rounded-lg shadow-md border border-border">
+                        <div class="flex justify-between items-start mb-3">
+                            <h3 class="text-lg font-semibold text-foreground break-words pr-2">
+                                {{ u.full_name }}
+                            </h3>
+                            <a :href="route('users.edit', u.id)" 
+                                class="text-green-600 dark:text-green-400 hover:text-green-300 p-2 rounded-md hover:bg-green-50 dark:hover:bg-green-900/20" 
+                                title="Editar">
+                                <SquarePen class="h-5 w-5"/>
+                            </a>
+                        </div>
+                        <div class="space-y-2 text-sm">
+                            <div>
+                                <span class="text-muted-foreground block text-xs uppercase font-medium mb-1">Usuário</span>
+                                <span class="text-foreground">{{ u.username }}</span>
+                            </div>
+                            <div>
+                                <span class="text-muted-foreground block text-xs uppercase font-medium mb-1">E-mail</span>
+                                <span class="text-foreground">{{ u.email || u.username }}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <div v-if="props.users.links.length > 3" class="mt-6 flex justify-center">

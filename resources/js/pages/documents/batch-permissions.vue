@@ -281,7 +281,7 @@ onUnmounted(() => {
         </div>
       </div>
 
-      <div class="overflow-x-auto bg-gray-900 rounded-lg shadow-md">
+      <div class="overflow-x-auto bg-gray-900 rounded-lg shadow-md hidden md:block">
         <table class="min-w-full text-white">
           <thead class="bg-gray-500 dark:bg-zinc-700">
             <tr class="border-b border-gray-700">
@@ -306,6 +306,42 @@ onUnmounted(() => {
             </tr>
           </tbody>
         </table>
+      </div>
+
+      <!-- Versão Mobile -->
+      <div class="md:hidden">
+        <div class="mb-4 p-3 bg-card rounded-lg border border-border">
+          <label class="flex items-center space-x-2 text-sm font-medium text-foreground">
+            <input type="checkbox" :checked="allSelected" @change="toggleAll" class="rounded border-input" />
+            <span>Selecionar todos os documentos</span>
+          </label>
+        </div>
+        
+        <div v-if="props.documents.data.length === 0"
+          class="bg-card p-6 rounded-lg shadow-md text-center text-sm text-muted-foreground">
+          Nenhum documento encontrado.
+        </div>
+        <div v-else class="grid gap-4">
+          <div v-for="doc in props.documents.data" :key="doc.id"
+            class="bg-card p-4 rounded-lg shadow-md border border-border"
+            :class="{ 'ring-2 ring-primary ring-opacity-50': selectedDocuments.includes(doc.id) }">
+            <div class="flex items-start space-x-3">
+              <input type="checkbox" :value="doc.id" v-model="selectedDocuments" 
+                class="rounded border-input mt-1 flex-shrink-0" />
+              <div class="flex-1 min-w-0">
+                <h3 class="text-lg font-semibold text-foreground break-words mb-2">
+                  {{ doc.title }}
+                </h3>
+                <div class="text-sm">
+                  <span class="text-muted-foreground block text-xs uppercase font-medium mb-1">Tipo de Documento</span>
+                  <span class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+                    {{ doc.metadata?.document_type || '-' }}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
 
       <div v-if="props.documents.links && props.documents.links.length > 3" class="mt-6 flex justify-center">
