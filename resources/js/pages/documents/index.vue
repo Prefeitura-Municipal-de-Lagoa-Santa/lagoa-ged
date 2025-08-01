@@ -18,6 +18,16 @@ interface Document {
   file_extension: string;
 };
 
+interface User {
+    id: string;
+    full_name: string;
+    username: string;
+    email: string;
+    is_protected: boolean;
+    is_ldap: boolean;
+    is_admin: boolean;
+}
+
 interface PaginatedDocuments {
   data: Document[];
   links: Array<{
@@ -31,6 +41,7 @@ interface Props {
   documents: PaginatedDocuments;
   filters: Record<string, string | number | null>;
   years: number[];
+  user: User;
 };
 
 const props = defineProps<Props>();
@@ -122,7 +133,8 @@ const breadcrumbs: BreadcrumbItem[] = [
             <ChevronUp v-if="showFilters" class="h-4 w-4" />
             <ChevronDown v-else class="h-4 w-4" />
           </Button>
-          <Button as-child class="bg-blue-600 text-white hover:bg-blue-700">
+          
+          <Button v-if="props.user.is_admin" as-child class="bg-blue-600 text-white hover:bg-blue-700">
             <Link :href="route('documents.import')" class="flex items-center gap-2">
               <FilePlus class="h-4 w-4" />
               Importar Documentos

@@ -198,6 +198,7 @@ class DocumentController extends Controller
             'documents' => $documents,
             'filters' => $filters,
             'years' => $this->getAvailableYears(),
+            'user' => $user,
         ]);
     }
 
