@@ -10,6 +10,7 @@ interface User {
   id: number;
   full_name: string;
   username: string;
+  email?: string;
   members: [];
 };
 
@@ -32,8 +33,8 @@ interface Props {
 const props = defineProps<Props>();
 
 const breadcrumbs:BreadcrumbItem[] = [
-    { title: 'Pagina Inicial', href: route('dashboard') }, 
-    { title: 'Permissões'}, 
+    { title: 'Página Inicial', href: route('dashboard') }, 
+    { title: 'Permissões', href: route('users.index') }, 
     { title: 'Usuários', href: route('users.index') } 
 ];
 
@@ -56,29 +57,31 @@ const breadcrumbs:BreadcrumbItem[] = [
                 </Button>
             </div>
 
-            <div class="bg-card p-0 sm:p-6 rounded-lg shadow-md overflow-x-auto">
-                <table class="min-w-full divide-y divide-border">
-                    <thead class="bg-muted/50">
-                        <tr>
-                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Usuário</th>
-                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">Nome</th>
-                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">E-mail</th>
-                            <th scope="col" class="relative px-6 py-3"><span class="sr-only">Ações</span></th>
+            <div class="overflow-x-auto bg-gray-900 rounded-lg shadow-md">
+                <table class="min-w-full text-white">
+                    <thead class="bg-gray-500 dark:bg-zinc-700">
+                        <tr class="border-b border-gray-700">
+                            <th scope="col" class="px-6 py-4 text-left text-xs font-semibold text-white dark:text-gray-300 uppercase tracking-wider">USUÁRIO</th>
+                            <th scope="col" class="px-6 py-4 text-left text-xs font-semibold text-white dark:text-gray-300 uppercase tracking-wider">NOME</th>
+                            <th scope="col" class="px-6 py-4 text-left text-xs font-semibold text-white dark:text-gray-300 uppercase tracking-wider">E-MAIL</th>
+                            <th scope="col" class="relative px-6 py-4 text-xs font-semibold text-white dark:text-gray-300 uppercase tracking-wider text-center">AÇÕES</th>
                         </tr>
                     </thead>
-                    <tbody class="bg-card divide-y divide-border">
+                    <tbody class="bg-gray-50 dark:bg-stone-950 divide-y divide-gray-700">
                         <tr v-if="props.users.data.length === 0">
-                            <td colspan="6" class="px-6 py-12 text-center text-sm text-muted-foreground">
+                            <td colspan="4" class="px-6 py-12 text-center text-sm text-gray-800">
                                 Nenhum usuário encontrado.
                             </td>
                         </tr>
 
-                        <tr v-for="u in props.users.data" :key="u.id" class="hover:bg-muted/50 transition-colors">
-                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-foreground">{{ u.username }}</td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-foreground">{{ u.full_name }}</td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-foreground">{{ u.email }}</td>
-                            <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-3 flex items-center justify-end">
-                                <a :href="route('users.edit', u.id)" class="text-green-500 hover:text-green-500/60" title="Editar"><SquarePen/></a>
+                        <tr v-for="u in props.users.data" :key="u.id" class="hover:bg-gray-200 dark:hover:bg-gray-800 transition-colors">
+                            <td class="px-6 py-4 text-sm font-medium text-gray-700 dark:text-white">{{ u.username }}</td>
+                            <td class="px-6 py-4 text-sm font-medium text-gray-700 dark:text-white">{{ u.full_name }}</td>
+                            <td class="px-6 py-4 text-sm text-gray-700 dark:text-gray-400">{{ u.email || u.username }}</td>
+                            <td class="px-6 py-4 text-sm font-medium flex items-center justify-center space-x-3">
+                                <a :href="route('users.edit', u.id)" class="text-green-600 dark:text-green-400 hover:text-green-300" title="Editar">
+                                    <SquarePen class="h-5 w-5"/>
+                                </a>
                             </td>
                         </tr>
                     </tbody>

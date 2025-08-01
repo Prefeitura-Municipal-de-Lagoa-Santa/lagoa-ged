@@ -283,22 +283,22 @@ onUnmounted(() => {
 
       <div class="overflow-x-auto bg-gray-900 rounded-lg shadow-md">
         <table class="min-w-full text-white">
-          <thead class="bg-zinc-700">
+          <thead class="bg-gray-500 dark:bg-zinc-700">
             <tr class="border-b border-gray-700">
-              <th class="px-6 py-4 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider">
+              <th class="px-6 py-4 text-left text-xs font-semibold text-white dark:text-gray-300 uppercase tracking-wider">
                 <input type="checkbox" :checked="allSelected" @change="toggleAll" class="rounded border-gray-600 bg-gray-700" />
               </th>
-              <th class="px-6 py-4 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider">TÍTULO</th>
-              <th class="px-6 py-4 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider">TIPO DE DOCUMENTO</th>
+              <th class="px-6 py-4 text-left text-xs font-semibold text-white dark:text-gray-300 uppercase tracking-wider">TÍTULO</th>
+              <th class="px-6 py-4 text-left text-xs font-semibold text-white dark:text-gray-300 uppercase tracking-wider">TIPO DE DOCUMENTO</th>
             </tr>
           </thead>
-          <tbody class="bg-stone-950 divide-y divide-gray-700">
-            <tr v-for="doc in props.documents.data" :key="doc.id" class="hover:bg-gray-800 transition-colors">
+          <tbody class="bg-gray-50 dark:bg-stone-950 divide-y divide-gray-700">
+            <tr v-for="doc in props.documents.data" :key="doc.id" class="hover:bg-gray-200 dark:hover:bg-gray-800 transition-colors">
               <td class="px-6 py-4">
                 <input type="checkbox" :value="doc.id" v-model="selectedDocuments" class="rounded border-gray-600 bg-gray-700" />
               </td>
-              <td class="px-6 py-4 text-sm font-medium text-white">{{ doc.title }}</td>
-              <td class="px-6 py-4 text-sm text-gray-300">
+              <td class="px-6 py-4 text-sm font-medium text-gray-700 dark:text-white">{{ doc.title }}</td>
+              <td class="px-6 py-4 text-sm text-gray-700 dark:text-gray-400">
                 <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
                   {{ doc.metadata?.document_type || '-' }}
                 </span>
