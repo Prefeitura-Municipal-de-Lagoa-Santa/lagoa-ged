@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\DashboardController;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Cache;
 use Inertia\Inertia;
 
 /*Route::get('/', function () {
@@ -18,6 +19,7 @@ Route::middleware(['auth'])->group(function () {
     
     require __DIR__ . '/documents.php';
     require __DIR__ . '/permissions.php';
+    require __DIR__ . '/notifications.php';
 });
 //require __DIR__ . '/settings.php';
 

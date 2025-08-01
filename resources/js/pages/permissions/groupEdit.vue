@@ -45,9 +45,16 @@ const form = useForm({
 
 // A função de submissão para atualizar o grupo
 function submitGroupForm() {
-    form.put(route('groups.update', { group: props.group.id }), {
+    form.put(route('groups.update', props.group.id), {
+        preserveState: true,
         preserveScroll: true,
-        onSuccess: () => {}, // Ou adicione uma notificação de sucesso
+        onSuccess: () => {
+            // A notificação será criada automaticamente pelo middleware
+            console.log('Grupo atualizado com sucesso');
+        },
+        onError: (errors) => {
+            console.error('Erro ao atualizar grupo:', errors);
+        }
     });
 }
 </script>

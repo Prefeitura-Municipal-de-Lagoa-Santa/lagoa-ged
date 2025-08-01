@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import DashboardLayout from '@/layouts/DashboardLayout.vue';
 import { Head, router, Link } from '@inertiajs/vue3';
-import { ref, computed, watch } from 'vue';
+import { ref, computed, watch, onUnmounted } from 'vue';
 import { Button } from '@/components/ui/button';
 import GroupManagerModal from '@/components/modals/GroupManagerModal.vue';
 import { Users, Filter, X, CheckCircle, ChevronDown, ChevronUp } from 'lucide-vue-next';
+import axios from 'axios';
 
 
 interface Document {
@@ -35,6 +36,9 @@ const showReadGroupModal = ref(false);
 const showWriteGroupModal = ref(false);
 const showPreview = ref(false);
 const previewData = ref<any>(null);
+const showDetailedChanges = ref(false);
+const jobNotification = ref<any>(null);
+const showNotification = ref(false);
 
 const allSelected = computed(() => selectedDocuments.value.length === props.documents.data.length);
 
@@ -80,6 +84,12 @@ watch(form, (newForm) => {
 }, { deep: true });
 
 function submitBatch() {
+  // Primeiro, mostra o preview
+  previewChanges();
+}
+
+function applyChanges() {
+  // Aplicar as mudanças sem preview
   router.post(route('documents.batch-permissions'), {
     document_ids: selectedDocuments.value,
     read_group_ids: selectedReadGroups.value,
@@ -89,6 +99,11 @@ function submitBatch() {
       selectedDocuments.value = [];
       selectedReadGroups.value = [];
       selectedWriteGroups.value = [];
+      showPreview.value = false;
+      showDetailedChanges.value = false;
+      
+      // Iniciar polling para verificar notificações do job
+      startNotificationPolling();
     }
   });
 }
@@ -138,6 +153,56 @@ function getGroupNames(groupIds: string[]) {
     return group ? group.name : id;
   }).join(', ');
 }
+
+// Função para verificar notificações de jobs
+async function checkNotifications() {
+  try {
+    const response = await axios.get('/documents/notifications');
+    if (response.data && response.data.success && response.data.notification) {
+      jobNotification.value = response.data.notification;
+      showNotification.value = true;
+      
+      // Parar o polling quando receber uma notificação
+      stopNotificationPolling();
+      
+      // Auto-hide notification after 10 seconds
+      setTimeout(() => {
+        showNotification.value = false;
+      }, 10000);
+    }
+  } catch (error) {
+    console.error('Erro ao verificar notificações:', error);
+  }
+}
+
+// Função para fechar notificação manualmente
+function closeNotification() {
+  showNotification.value = false;
+  jobNotification.value = null;
+}
+
+// Polling para verificar notificações (check a cada 3 segundos quando há job rodando)
+let notificationInterval: number | null = null;
+
+function startNotificationPolling() {
+  if (notificationInterval) return; // Já está rodando
+  
+  notificationInterval = setInterval(() => {
+    checkNotifications();
+  }, 3000); // Check a cada 3 segundos
+}
+
+function stopNotificationPolling() {
+  if (notificationInterval) {
+    clearInterval(notificationInterval);
+    notificationInterval = null;
+  }
+}
+
+// Limpar polling quando o componente for desmontado
+onUnmounted(() => {
+  stopNotificationPolling();
+});
 </script>
 
 <template>
@@ -166,15 +231,6 @@ function getGroupNames(groupIds: string[]) {
             <span v-if="selectedWriteGroups.length" class="ml-1 px-2 py-0.5 bg-white/20 rounded-full text-xs">
               {{ selectedWriteGroups.length }}
             </span>
-          </Button>
-          <Button 
-            :disabled="!selectedDocuments.length" 
-            @click="previewChanges"
-            variant="outline"
-            class="flex items-center gap-2"
-          >
-            <CheckCircle class="h-4 w-4" />
-            Visualizar Mudanças
           </Button>
           <Button 
             :disabled="!selectedDocuments.length || (!selectedReadGroups.length && !selectedWriteGroups.length)" 
@@ -225,24 +281,24 @@ function getGroupNames(groupIds: string[]) {
         </div>
       </div>
 
-      <div class="overflow-x-auto bg-gray-900 rounded-lg shadow-md">
+      <div class="overflow-x-auto bg-gray-900 rounded-lg shadow-md hidden md:block">
         <table class="min-w-full text-white">
-          <thead class="bg-zinc-700">
+          <thead class="bg-gray-500 dark:bg-zinc-700">
             <tr class="border-b border-gray-700">
-              <th class="px-6 py-4 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider">
+              <th class="px-6 py-4 text-left text-xs font-semibold text-white dark:text-gray-300 uppercase tracking-wider">
                 <input type="checkbox" :checked="allSelected" @change="toggleAll" class="rounded border-gray-600 bg-gray-700" />
               </th>
-              <th class="px-6 py-4 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider">TÍTULO</th>
-              <th class="px-6 py-4 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider">TIPO DE DOCUMENTO</th>
+              <th class="px-6 py-4 text-left text-xs font-semibold text-white dark:text-gray-300 uppercase tracking-wider">TÍTULO</th>
+              <th class="px-6 py-4 text-left text-xs font-semibold text-white dark:text-gray-300 uppercase tracking-wider">TIPO DE DOCUMENTO</th>
             </tr>
           </thead>
-          <tbody class="bg-stone-950 divide-y divide-gray-700">
-            <tr v-for="doc in props.documents.data" :key="doc.id" class="hover:bg-gray-800 transition-colors">
+          <tbody class="bg-gray-50 dark:bg-stone-950 divide-y divide-gray-700">
+            <tr v-for="doc in props.documents.data" :key="doc.id" class="hover:bg-gray-200 dark:hover:bg-gray-800 transition-colors">
               <td class="px-6 py-4">
                 <input type="checkbox" :value="doc.id" v-model="selectedDocuments" class="rounded border-gray-600 bg-gray-700" />
               </td>
-              <td class="px-6 py-4 text-sm font-medium text-white">{{ doc.title }}</td>
-              <td class="px-6 py-4 text-sm text-gray-300">
+              <td class="px-6 py-4 text-sm font-medium text-gray-700 dark:text-white">{{ doc.title }}</td>
+              <td class="px-6 py-4 text-sm text-gray-700 dark:text-gray-400">
                 <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
                   {{ doc.metadata?.document_type || '-' }}
                 </span>
@@ -250,6 +306,42 @@ function getGroupNames(groupIds: string[]) {
             </tr>
           </tbody>
         </table>
+      </div>
+
+      <!-- Versão Mobile -->
+      <div class="md:hidden">
+        <div class="mb-4 p-3 bg-card rounded-lg border border-border">
+          <label class="flex items-center space-x-2 text-sm font-medium text-foreground">
+            <input type="checkbox" :checked="allSelected" @change="toggleAll" class="rounded border-input" />
+            <span>Selecionar todos os documentos</span>
+          </label>
+        </div>
+        
+        <div v-if="props.documents.data.length === 0"
+          class="bg-card p-6 rounded-lg shadow-md text-center text-sm text-muted-foreground">
+          Nenhum documento encontrado.
+        </div>
+        <div v-else class="grid gap-4">
+          <div v-for="doc in props.documents.data" :key="doc.id"
+            class="bg-card p-4 rounded-lg shadow-md border border-border"
+            :class="{ 'ring-2 ring-primary ring-opacity-50': selectedDocuments.includes(doc.id) }">
+            <div class="flex items-start space-x-3">
+              <input type="checkbox" :value="doc.id" v-model="selectedDocuments" 
+                class="rounded border-input mt-1 flex-shrink-0" />
+              <div class="flex-1 min-w-0">
+                <h3 class="text-lg font-semibold text-foreground break-words mb-2">
+                  {{ doc.title }}
+                </h3>
+                <div class="text-sm">
+                  <span class="text-muted-foreground block text-xs uppercase font-medium mb-1">Tipo de Documento</span>
+                  <span class="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+                    {{ doc.metadata?.document_type || '-' }}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
 
       <div v-if="props.documents.links && props.documents.links.length > 3" class="mt-6 flex justify-center">
@@ -292,32 +384,202 @@ function getGroupNames(groupIds: string[]) {
 
       <!-- Modal de Preview -->
       <div v-if="showPreview" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-        <div class="bg-white rounded-lg p-6 max-w-4xl max-h-96 overflow-y-auto">
-          <h3 class="text-lg font-semibold mb-4">Visualizar Mudanças</h3>
+        <div class="bg-white dark:bg-zinc-800 rounded-lg p-6 max-w-5xl max-h-[80vh] overflow-y-auto">
+          <div class="flex items-center mb-4">
+            <h3 class="text-lg font-semibold">Confirmar Alterações em Lote</h3>
+            <span class="ml-2 bg-orange-100 text-orange-800 text-xs px-2 py-1 rounded">Revisão Obrigatória</span>
+          </div>
+          <p class="text-sm text-gray-400 mb-6">
+            Revise cuidadosamente as alterações abaixo antes de confirmar. Esta ação afetará as permissões dos documentos selecionados.
+          </p>
+          
           <div v-if="previewData">
-            <p class="mb-4">
-              <strong>{{ previewData.documents_with_changes }}</strong> de <strong>{{ previewData.total_documents }}</strong> documentos terão permissões alteradas.
-            </p>
-            <div v-for="change in previewData.changes" :key="change.document_id" class="mb-4 p-3 border rounded">
-              <h4 class="font-medium">{{ change.document_title }}</h4>
-              <div v-if="change.read_groups_to_add.length" class="text-green-600">
-                ✓ Adicionados à leitura: {{ getGroupNames(change.read_groups_to_add) }}
-              </div>
-              <div v-if="change.read_groups_to_remove.length" class="text-red-600">
-                ✗ Removidos da leitura: {{ getGroupNames(change.read_groups_to_remove) }}
-              </div>
-              <div v-if="change.write_groups_to_add.length" class="text-green-600">
-                ✓ Adicionados à escrita: {{ getGroupNames(change.write_groups_to_add) }}
-              </div>
-              <div v-if="change.write_groups_to_remove.length" class="text-red-600">
-                ✗ Removidos da escrita: {{ getGroupNames(change.write_groups_to_remove) }}
+            <!-- Resumo -->
+            <div class="bg-blue-50 p-4 rounded-lg mb-6">
+              <h4 class="font-semibold text-blue-800 mb-2">Resumo das Alterações</h4>
+              <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                <div>
+                  <span class="text-gray-600">Total de documentos:</span>
+                  <div class="font-semibold">{{ previewData.summary?.total_documents || 0 }}</div>
+                </div>
+                <div>
+                  <span class="text-gray-600">Documentos alterados:</span>
+                  <div class="font-semibold text-orange-600">{{ previewData.summary?.documents_with_changes || 0 }}</div>
+                </div>
+                <div>
+                  <span class="text-gray-600">Permissões adicionadas:</span>
+                  <div class="font-semibold text-green-600">{{ previewData.summary?.total_permissions_added || 0 }}</div>
+                </div>
+                <div>
+                  <span class="text-gray-600">Permissões removidas:</span>
+                  <div class="font-semibold text-red-600">{{ previewData.summary?.total_permissions_removed || 0 }}</div>
+                </div>
               </div>
             </div>
+
+            <!-- Avisos/Alertas -->
+            <div v-if="previewData.warning_messages?.length" class="bg-yellow-50 border-l-4 border-yellow-400 rounded-lg p-4 mb-6">
+              <div class="flex">
+                <div class="ml-3">
+                  <h4 class="text-sm font-medium text-yellow-800">⚠️ Atenção</h4>
+                  <div class="mt-2 text-sm text-yellow-700">
+                    <ul class="list-disc list-inside space-y-1">
+                      <li v-for="warning in previewData.warning_messages" :key="warning">{{ warning }}</li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Lista de documentos sem alterações -->
+            <div v-if="previewData.summary?.documents_unchanged > 0" class="bg-gray-50 p-3 rounded mb-4">
+              <details>
+                <summary class="cursor-pointer text-gray-600 text-gray-200 text-sm">
+                  {{ previewData.summary.documents_unchanged }} documento(s) não terão alterações
+                </summary>
+              </details>
+            </div>
+
+            <!-- Detalhes das mudanças por documento -->
+            <div v-if="previewData.changes?.length" class="space-y-4">
+              <div class="flex items-center justify-between">
+                <h4 class="font-semibold text-gray-800 dark:text-gray-200">Documentos com Alterações:</h4>
+                <Button 
+                  @click="showDetailedChanges = !showDetailedChanges"
+                  variant="outline"
+                  class="flex items-center gap-2 text-sm"
+                >
+                  <span>{{ showDetailedChanges ? 'Ocultar' : 'Ver' }} Detalhes</span>
+                  <ChevronDown v-if="!showDetailedChanges" class="h-4 w-4" />
+                  <ChevronUp v-else class="h-4 w-4" />
+                </Button>
+              </div>
+
+              <!-- Lista resumida quando não expandida -->
+              <div v-if="!showDetailedChanges" class="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg">
+                <p class="text-sm text-gray-600 dark:text-gray-300 mb-2">
+                  Os seguintes documentos terão alterações:
+                </p>
+                <div class="flex flex-wrap gap-2">
+                  <span 
+                    v-for="change in previewData.changes.slice(0, 5)" 
+                    :key="change.document_id"
+                    class="inline-flex items-center px-2 py-1 rounded-full text-xs bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200"
+                  >
+                    {{ change.document_title }}
+                    <span class="ml-1 bg-blue-200 dark:bg-blue-800 px-1 rounded-full">{{ change.change_count }}</span>
+                  </span>
+                  <span 
+                    v-if="previewData.changes.length > 5"
+                    class="inline-flex items-center px-2 py-1 rounded-full text-xs bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300"
+                  >
+                    +{{ previewData.changes.length - 5 }} mais...
+                  </span>
+                </div>
+              </div>
+              
+              <!-- Lista detalhada quando expandida -->
+              <div v-if="showDetailedChanges" class="space-y-3">
+                <div v-for="change in previewData.changes" :key="change.document_id" class="border rounded-lg p-4 bg-white dark:bg-zinc-950 shadow-sm dark:shadow-gray-500">
+                  <div class="flex justify-between items-start mb-3">
+                    <div>
+                      <h5 class="font-medium text-gray-900 dark:text-gray-200">{{ change.document_title }}</h5>
+                      <p class="text-sm text-gray-500 dark:text-gray-400">Tipo: {{ change.document_type || 'N/A' }}</p>
+                    </div>
+                    <span class="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded">
+                      {{ change.change_count }} alterações
+                    </span>
+                  </div>
+
+                  <!-- Estado atual vs novo estado -->
+                  <div class="grid md:grid-cols-2 gap-4 mb-3">
+                    <div class="bg-green-100 p-3 rounded">
+                      <h6 class="text-sm font-semibold text-gray-700 mb-2">Permissões Atuais</h6>
+                      <div class="text-sm space-y-1">
+                        <div>
+                          <span class="text-gray-600">Leitura:</span>
+                          <span class="ml-1 text-green-800 font-semibold">{{ change.current_permissions?.read_groups?.join(', ') || 'Nenhuma' }}</span>
+                        </div>
+                        <div>
+                          <span class="text-gray-600">Escrita:</span>
+                          <span class="ml-1 text-green-800 font-semibold">{{ change.current_permissions?.write_groups?.join(', ') || 'Nenhuma' }}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div class="bg-blue-100 p-3 rounded">
+                      <h6 class="text-sm font-semibold text-blue-700 mb-2">Novas Permissões</h6>
+                      <div class="text-sm space-y-1">
+                        <div>
+                          <span class="text-gray-600">Leitura:</span>
+                          <span class="ml-1 text-blue-800 font-semibold">{{ change.new_permissions?.read_groups?.join(', ') || 'Nenhuma' }}</span>
+                        </div>
+                        <div>
+                          <span class="text-gray-600">Escrita:</span>
+                          <span class="ml-1 text-blue-800 font-semibold">{{ change.new_permissions?.write_groups?.join(', ') || 'Nenhuma' }}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Mudanças específicas -->
+                  <div class="space-y-2">
+                    <div v-if="change.changes?.read_groups_to_add?.length" class="flex items-center text-sm">
+                      <span class="w-2 h-2 bg-green-500 rounded-full mr-2"></span>
+                      <span class="text-green-700">Leitura adicionada: {{ change.changes.read_groups_to_add.join(', ') }}</span>
+                    </div>
+                    <div v-if="change.changes?.read_groups_to_remove?.length" class="flex items-center text-sm">
+                      <span class="w-2 h-2 bg-red-500 rounded-full mr-2"></span>
+                      <span class="text-red-700">Leitura removida: {{ change.changes.read_groups_to_remove.join(', ') }}</span>
+                    </div>
+                    <div v-if="change.changes?.write_groups_to_add?.length" class="flex items-center text-sm">
+                      <span class="w-2 h-2 bg-green-500 rounded-full mr-2"></span>
+                      <span class="text-green-700">Escrita adicionada: {{ change.changes.write_groups_to_add.join(', ') }}</span>
+                    </div>
+                    <div v-if="change.changes?.write_groups_to_remove?.length" class="flex items-center text-sm">
+                      <span class="w-2 h-2 bg-red-500 rounded-full mr-2"></span>
+                      <span class="text-red-700">Escrita removida: {{ change.changes.write_groups_to_remove.join(', ') }}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div v-else-if="previewData.summary?.documents_with_changes === 0" class="text-center py-8 text-gray-500">
+              <p>Nenhum documento terá alterações com as permissões selecionadas.</p>
+            </div>
           </div>
-          <div class="flex justify-end gap-2 mt-4">
-            <Button @click="showPreview = false" variant="outline">Fechar</Button>
-            <Button @click="showPreview = false; submitBatch()" class="bg-green-600 hover:bg-green-700">Confirmar Alterações</Button>
+          
+          <div class="flex justify-end gap-2 mt-6 pt-4 border-t">
+            <Button @click="showPreview = false; showDetailedChanges = false" variant="outline" class="bg-zinc-600 text-white dark:bg-zinc-500">Cancelar</Button>
+            <Button 
+              v-if="previewData?.changes?.length > 0"
+              @click="applyChanges()" 
+              class="bg-green-600 hover:bg-green-700 text-white"
+            >
+              Confirmar Alterações ({{ previewData.summary?.documents_with_changes || 0 }} documentos)
+            </Button>
           </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Notification Toast -->
+    <div
+      v-if="showNotification && jobNotification"
+      class="fixed top-4 right-4 z-50 max-w-md w-full bg-white border border-gray-200 rounded-lg shadow-lg transition-all duration-300 ease-in-out"
+    >
+      <div class="p-4">
+        <div class="flex justify-between items-start">
+          <div class="flex-1">
+            <div v-html="jobNotification" class="text-sm text-gray-700 leading-relaxed"></div>
+          </div>
+          <button
+            @click="closeNotification"
+            class="ml-3 flex-shrink-0 text-gray-400 hover:text-gray-600 transition-colors"
+          >
+            <X class="h-5 w-5" />
+          </button>
         </div>
       </div>
     </div>

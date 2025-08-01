@@ -20,6 +20,12 @@ return Application::configure(basePath: dirname(__DIR__))
             HandleAppearance::class,
             HandleInertiaRequests::class,
             AddLinkHeadersForPreloadedAssets::class,
+            \App\Http\Middleware\ConvertFlashToSininho::class, // Aplicar globalmente a todas as rotas web
+        ]);
+
+        // Registrar o middleware para uso específico
+        $middleware->alias([
+            'flash.to.notification' => \App\Http\Middleware\ConvertFlashToSininho::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {

@@ -42,16 +42,26 @@ const form = useForm({
     full_name: props.user.full_name,
     email: props.user.email,
     username: props.user.username,
-    userGroups: props.userGroups, // Certifique-se de que userGroups é um array de objetos Group aqui
+    userGroups: props.userGroups || [], // Ensure userGroups is an array of Group objects
 });
 
 // A função de submissão é definida aqui e passada para o UserForm
 function submitUserForm() {
-    form.transform(data => ({
+    const userGroups = Array.isArray(form.userGroups) ? form.userGroups : [];
+    const userGroupIds = userGroups.map((group: any) => group.id || group);
+    
+    form.transform((data) => ({
         ...data,
-        userGroups: data.userGroups.map(group => group.id), // Envia apenas os IDs dos grupos
+        userGroups: userGroupIds
     })).put(route('users.update', { user: props.user.id }), {
         preserveScroll: true,
+        onSuccess: () => {
+            // A notificação será criada automaticamente pelo middleware
+            console.log('Usuário atualizado com sucesso');
+        },
+        onError: (errors) => {
+            console.error('Erro ao atualizar usuário:', errors);
+        }
     });
 }
 </script>

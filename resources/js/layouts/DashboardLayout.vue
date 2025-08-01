@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { ref, onMounted, onBeforeUnmount, watch, computed } from 'vue';
 import { Link, router, Head, usePage } from '@inertiajs/vue3';
-import { CircleUserRoundIcon, File, House, LogOut, Menu, Minus, MoonIcon, Palette, Sun, SunMoon, Headset, MonitorCogIcon, Shield, FileCogIcon, UserCog2, } from 'lucide-vue-next';
+import { CircleUserRoundIcon, File, House, LogOut, Menu, Minus, MoonIcon, Palette, Sun, SunMoon, Headset, MonitorCogIcon, Shield, FileCogIcon, UserCog2, X, Bell } from 'lucide-vue-next';
 import type { BreadcrumbItemType } from '@/types';
+import NotificationDropdown from '@/components/NotificationDropdown.vue';
 
 interface Props {
     breadcrumbs?: BreadcrumbItemType[];
@@ -20,11 +21,6 @@ const can = computed(() => {
         return permissions[permission] ?? false;
     };
 });
-
-// --- MENSAGENS FLASH ---
-const successMessage = computed(() => page.props.flash.success);
-const errorMessage = computed(() => page.props.flash.error);
-// --- FIM DA SEÇÃO DE MENSAGENS ---
 
 // Lógica da Sidebar
 const sidebarOpen = ref(true);
@@ -238,7 +234,7 @@ onBeforeUnmount(() => {
                     </li>
 
                     <li v-if="can('view_any_groups')" ref="permissionsMenuItemRef">
-                        <button @click="togglePermissionsSubmenu" :title="!sidebarOpen ? 'Permissões' : null" :class="[
+                        <button @click="togglePermissionsSubmenu" :title="!sidebarOpen ? 'Permissões' : undefined" :class="[
                                 'flex items-center p-3 rounded-md transition-colors duration-200 w-full text-left group',
                                 sidebarOpen ? 'space-x-3' : 'justify-center',
                                 permissionsSubmenuOpen || route().current('permissions.*') || route().current('roles.*') ? 'bg-cyan-600 text-sidebar-primary-foreground' : 'hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
@@ -308,6 +304,10 @@ onBeforeUnmount(() => {
                 </div>
 
                 <div class="flex items-center space-x-4">
+                    <!-- Sistema de Notificações Avançado -->
+                    <NotificationDropdown />
+
+                    <!-- Botão do Tema -->
                     <div ref="themeSwitcherRef" class="relative">
                         <button @click="toggleDropdown" title="Alterar Tema"
                             class="p-2 rounded-md hover:bg-muted focus:outline-none focus:ring-2 focus:ring-ring text-foreground">
@@ -339,7 +339,7 @@ onBeforeUnmount(() => {
                             class="absolute right-0 mt-2 w-max min-w-[12rem] bg-card border border-border rounded-md shadow-lg py-1 z-50">
                             <div
                                 class="px-4 py-3 text-sm text-muted-foreground border-b border-border truncate w-full min-w-0">
-                                {{ $page.props.auth.user.email }}
+                                {{ (page.props.auth as any)?.user?.email }}
                             </div>
                             <a href="https://glpi.lagoasanta.mg.gov.br"
                                 class="block w-full text-left px-4 py-2 text-sm text-foreground hover:bg-muted"
@@ -364,14 +364,14 @@ onBeforeUnmount(() => {
             </header>
 
             <main class="flex-1 p-6 overflow-y-auto bg-background dark:bg-neutral-800">
-                <div v-if="successMessage"
+                <!--div v-if="successMessage"
                     class="w-fit max-w-lg mx-auto mb-4 rounded-full bg-green-100 px-6 py-2 text-sm font-medium text-green-800 shadow-lg">
                     {{ successMessage }}
                 </div>
                 <div v-if="errorMessage"
                     class="w-fit max-w-lg mx-auto mb-4 rounded-full bg-red-100 px-6 py-2 text-sm font-medium text-red-800 shadow-lg">
                     {{ errorMessage }}
-                </div>
+                </div-->
 
                 <slot />
             </main>
