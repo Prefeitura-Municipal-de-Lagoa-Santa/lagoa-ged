@@ -146,7 +146,7 @@ const canSeePagamentosCard = computed(() => {
                     <div class="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -translate-y-16 translate-x-16 group-hover:scale-110 transition-transform duration-500"></div>
                     
                     <!-- Content -->
-                    <div class="relative z-10">
+                    <div class="relative z-9">
                         <div class="flex items-center justify-between mb-4">
                             <div class="p-4 bg-white/20 rounded-xl backdrop-blur-sm transform transition-transform group-hover:scale-110 group-hover:rotate-3">
                                 <Scale class="w-8 h-8 text-white drop-shadow-lg" strokeWidth={2.5} />
@@ -174,7 +174,7 @@ const canSeePagamentosCard = computed(() => {
                     <div class="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -translate-y-16 translate-x-16 group-hover:scale-110 transition-transform duration-500"></div>
                     
                     <!-- Content -->
-                    <div class="relative z-10">
+                    <div class="relative z-9">
                         <div class="flex items-center justify-between mb-4">
                             <div class="p-4 bg-white/20 rounded-xl backdrop-blur-sm transform transition-transform group-hover:scale-110 group-hover:rotate-3">
                                 <FileUser class="w-8 h-8 text-white drop-shadow-lg" strokeWidth={2.5} />
@@ -201,7 +201,7 @@ const canSeePagamentosCard = computed(() => {
                     <div class="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -translate-y-16 translate-x-16 group-hover:scale-110 transition-transform duration-500"></div>
                     
                     <!-- Content -->
-                    <div class="relative z-10">
+                    <div class="relative z-9">
                         <div class="flex items-center justify-between mb-4">
                             <div class="p-4 bg-white/20 rounded-xl backdrop-blur-sm transform transition-transform group-hover:scale-110 group-hover:rotate-3">
                                 <FolderKanbanIcon class="w-8 h-8 text-white drop-shadow-lg" strokeWidth={2.5} />
@@ -228,7 +228,7 @@ const canSeePagamentosCard = computed(() => {
                     <div class="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -translate-y-16 translate-x-16 group-hover:scale-110 transition-transform duration-500"></div>
                     
                     <!-- Content -->
-                    <div class="relative z-10">
+                    <div class="relative z-9">
                         <div class="flex items-center justify-between mb-4">
                             <div class="p-4 bg-white/20 rounded-xl backdrop-blur-sm transform transition-transform group-hover:scale-110 group-hover:rotate-3">
                                 <HandHeart class="w-8 h-8 text-white drop-shadow-lg" strokeWidth={2.5} />
@@ -255,7 +255,7 @@ const canSeePagamentosCard = computed(() => {
                     <div class="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -translate-y-16 translate-x-16 group-hover:scale-110 transition-transform duration-500"></div>
                     
                     <!-- Content -->
-                    <div class="relative z-10">
+                    <div class="relative z-9">
                         <div class="flex items-center justify-between mb-4">
                             <div class="p-4 bg-white/20 rounded-xl backdrop-blur-sm transform transition-transform group-hover:scale-110 group-hover:rotate-3">
                                 <CircleDollarSign class="w-8 h-8 text-white drop-shadow-lg" strokeWidth={2.5} />

@@ -122,7 +122,7 @@ const breadcrumbs: BreadcrumbItem[] = [
             <ChevronUp v-if="showFilters" class="h-4 w-4" />
             <ChevronDown v-else class="h-4 w-4" />
           </Button>
-          <Button as-child>
+          <Button as-child class="bg-blue-600 text-white hover:bg-blue-700">
             <Link :href="route('documents.import')" class="flex items-center gap-2">
               <FilePlus class="h-4 w-4" />
               Importar Documentos
@@ -169,32 +169,32 @@ const breadcrumbs: BreadcrumbItem[] = [
 
       <div class="overflow-x-auto bg-gray-900 rounded-lg shadow-md hidden md:block">
         <table class="min-w-full text-white">
-          <thead class="bg-zinc-700">
+          <thead class="bg-gray-500 dark:bg-zinc-700">
             <tr class="border-b border-gray-700">
               <th scope="col"
-                class="px-6 py-4 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider">TÍTULO
+                class="px-6 py-4 text-left text-xs font-semibold text-white dark:text-gray-300 uppercase tracking-wider">TÍTULO
               </th>
               <th scope="col"
-                class="px-6 py-4 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider">TIPO DE
+                class="px-6 py-4 text-left text-xs font-semibold text-white dark:text-gray-300 uppercase tracking-wider">TIPO DE
                 DOCUMENTO</th>
               <th scope="col"
-                class="px-6 py-4 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider">DATA DE
+                class="px-6 py-4 text-left text-xs font-semibold text-white dark:text-gray-300 uppercase tracking-wider">DATA DE
                 UPLOAD</th>
               <th scope="col"
-                class="px-6 py-4 text-left text-xs font-semibold text-gray-300 uppercase tracking-wider">FORMATO
+                class="px-6 py-4 text-left text-xs font-semibold text-white dark:text-gray-300 uppercase tracking-wider">FORMATO
                 DO ARQUIVO</th>
-              <th scope="col" class="relative px-6 py-4 text-xs font-semibold text-gray-300 uppercase tracking-wider text-center">AÇÕES</th>
+              <th scope="col" class="relative px-6 py-4 text-xs font-semibold text-white dark:text-gray-300 uppercase tracking-wider text-center">AÇÕES</th>
             </tr>
           </thead>
-          <tbody class="bg-stone-950 divide-y divide-gray-700">
+          <tbody class="bg-gray-50 dark:bg-stone-950 divide-y divide-gray-700">
             <tr v-if="props.documents.data.length === 0">
-              <td colspan="5" class="px-6 py-12 text-center text-sm text-gray-400">
+              <td colspan="5" class="px-6 py-12 text-center text-sm text-gray-800">
                 Nenhum documento encontrado.
               </td>
             </tr>
 
-            <tr v-for="doc in props.documents.data" :key="doc.id" class="hover:bg-gray-800 transition-colors">
-              <td class="px-6 py-4 text-sm font-medium text-white">
+            <tr v-for="doc in props.documents.data" :key="doc.id" class="hover:bg-gray-200 dark:hover:bg-gray-800 transition-colors">
+              <td class="px-6 py-4 text-sm font-medium text-gray-700 dark:text-white">
                 <a :href="route('documents.show', doc.id)" class="hover:text-blue-400">{{ doc.title }}</a>
               </td>
               <td class="px-6 py-4 text-sm text-gray-300">
@@ -202,18 +202,18 @@ const breadcrumbs: BreadcrumbItem[] = [
                   {{ doc.metadata?.document_type }}
                 </span>
               </td>
-              <td class="px-6 py-4 text-sm text-gray-300">{{ new
+              <td class="px-6 py-4 text-sm text-gray-700 dark:text-gray-400">{{ new
                 Date(doc.upload_date).toLocaleDateString() }}</td>
-              <td class="px-6 py-4 text-sm text-gray-300">
+              <td class="px-6 py-4 text-sm text-gray-700">
                 <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-900 text-blue-300">
                   {{ doc.file_extension }}
                 </span>
               </td>
               <td class="px-6 py-4 text-sm font-medium flex items-center justify-center space-x-3">
-                <a :href="route('documents.edit', doc.id)" class="text-green-400 hover:text-green-300" title="Editar">
+                <a :href="route('documents.edit', doc.id)" class="text-green-600 dark:text-green-400 hover:text-green-300" title="Editar">
                   <SquarePen class="h-5 w-5"/>
                 </a>
-                <a :href="route('documents.show', doc.id)" class="text-white hover:text-gray-300" title="Ver">
+                <a :href="route('documents.show', doc.id)" class="text-blue-600 dark:text-blue-500 hover:text-blue-400" title="Ver">
                   <Eye class="h-5 w-5" />
                 </a>
               </td>

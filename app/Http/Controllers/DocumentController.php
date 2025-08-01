@@ -9,6 +9,7 @@ use App\Jobs\ImportDocumentsJob;
 use App\Models\Document;
 use App\Models\Group;
 use App\Models\User;
+use App\Services\NotificationService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -19,7 +20,10 @@ use MongoDB\BSON\regex;
 use SplFileObject;
 use Storage;
 
-class DocumentController extends Controller{
+class DocumentController extends Controller
+{
+    // Removido middleware de conversão de flash para evitar duplicação
+    // O sistema de notificações agora funciona diretamente via EnhancedNotificationService
     /**
      * Exibe o formulário de edição de um documento
      */
@@ -90,7 +94,16 @@ class DocumentController extends Controller{
 
         $document->save();
 
-        return redirect()->route('documents.show', $document->_id)->with('success', 'Documento atualizado com sucesso!');
+        // Usar EnhancedNotificationService diretamente
+        $notificationService = app(\App\Services\EnhancedNotificationService::class);
+        $notificationService->success(
+            $user->id,
+            'Documento Atualizado',
+            'Documento atualizado com sucesso!',
+            ['document_id' => $document->_id, 'document_title' => $document->title]
+        );
+
+        return redirect()->route('documents.show', $document->_id);
     }
 
     public function index(Request $request)
@@ -134,8 +147,7 @@ class DocumentController extends Controller{
 
             // Filtro por Título (Busca parcial, case-insensitive)
             if (!empty($filters['title'])) {
-                $pattern = new regex('.*' . preg_quote($filters['title'], '/') . '.*', 'i');
-                $q->where('title', 'regex', $pattern);
+                $q->where('title', 'regex', '/' . preg_quote($filters['title'], '/') . '/i');
             }
 
             // Filtro por Tags (assume string separada por vírgulas, busca se o documento contém ALGUMA das tags)
@@ -147,8 +159,7 @@ class DocumentController extends Controller{
                     $q->where(function ($tagQuery) use ($tagsArray) {
                         foreach ($tagsArray as $tag) {
                             // Busca parcial (semelhante ao LIKE) e sem case sensitive
-                            $regex = new regex($tag, 'i'); // 'i' ignora case
-                            $tagQuery->orWhere('tags', 'regexp', $regex);
+                            $tagQuery->orWhere('tags', 'regex', '/' . preg_quote($tag, '/') . '/i');
                         }
                     });
                 }
@@ -170,7 +181,7 @@ class DocumentController extends Controller{
             // Filtro por Outros Metadados Dinâmicos (um único campo de texto livre)
             if (!empty($filters['other_metadata']) && is_string($filters['other_metadata'])) {
                 $escapedSearchText = preg_quote($filters['other_metadata'], '/');
-                $pattern = new regex('.*' . $escapedSearchText . '.*', 'i');
+                $pattern = '/' . $escapedSearchText . '/i';
 
                 $q->where(function ($orQuery) use ($pattern, $searchableMetadataFields) {
                     foreach ($searchableMetadataFields as $field) {
@@ -346,7 +357,16 @@ class DocumentController extends Controller{
             $request->input('write_group_ids', [])
         );
     
-        return redirect()->back()->with('success', 'Importação em andamento. Você será notificado ao final.');
+        // Usar EnhancedNotificationService diretamente
+        $notificationService = app(\App\Services\EnhancedNotificationService::class);
+        $notificationService->info(
+            $user->id,
+            'Importação Iniciada',
+            'Importação em andamento. Você será notificado ao final.',
+            ['job_type' => 'import_documents']
+        );
+    
+        return redirect()->back();
     }
 
     public function batchPermissions(Request $request)
@@ -359,8 +379,7 @@ class DocumentController extends Controller{
         $query->where(function ($q) use ($filters) {
             // Filtro por Título
             if (!empty($filters['title'])) {
-                $pattern = new regex('.*' . preg_quote($filters['title'], '/') . '.*', 'i');
-                $q->where('title', 'regex', $pattern);
+                $q->where('title', 'regex', '/' . preg_quote($filters['title'], '/') . '/i');
             }
 
             // Filtro por Tags
@@ -371,8 +390,7 @@ class DocumentController extends Controller{
                 if (!empty($tagsArray)) {
                     $q->where(function ($tagQuery) use ($tagsArray) {
                         foreach ($tagsArray as $tag) {
-                            $regex = new regex($tag, 'i');
-                            $tagQuery->orWhere('tags', 'regexp', $regex);
+                            $tagQuery->orWhere('tags', 'regex', '/' . preg_quote($tag, '/') . '/i');
                         }
                     });
                 }
@@ -389,7 +407,7 @@ class DocumentController extends Controller{
             // Filtro por Outros Metadados
             if (!empty($filters['other_metadata']) && is_string($filters['other_metadata'])) {
                 $escapedSearchText = preg_quote($filters['other_metadata'], '/');
-                $pattern = new regex('.*' . $escapedSearchText . '.*', 'i');
+                $pattern = '/' . $escapedSearchText . '/i';
 
                 $searchableMetadataFields = ['document_number', 'document_type'];
                 $q->where(function ($orQuery) use ($pattern, $searchableMetadataFields) {
@@ -434,11 +452,10 @@ class DocumentController extends Controller{
             ->map(fn($id) => new ObjectId($id))
             ->toArray();
 
-        
         // Se for apenas preview, retorna as mudanças
         if ($request->input('preview', false)) {
             Log::info('Executando preview das mudanças');
-            return $this->previewBatchChanges($documentIds, $readGroupObjectIds, $writeGroupObjectIds);
+            return $this->previewBatchChanges($documentIds, $readGroupIds, $writeGroupIds);
         }
         
         Log::info('Executando atualização em lote', [
@@ -447,16 +464,38 @@ class DocumentController extends Controller{
             'write_groups_count' => count($writeGroupObjectIds)
         ]);
         //dd($readGroupObjectIds, $writeGroupObjectIds);
-        BatchUpdateDocumentPermissionsJob::dispatch($documentIds, $readGroupObjectIds, $writeGroupObjectIds, $request->user()->id);
-        return redirect()->route('documents.index')->with('success', 'Atualização em lote iniciada!');
+        BatchUpdateDocumentPermissionsJob::dispatch($documentIds, $readGroupObjectIds, $writeGroupObjectIds, (string) $request->user()->id);
+        
+        // Usar EnhancedNotificationService diretamente
+        $notificationService = app(\App\Services\EnhancedNotificationService::class);
+        $notificationService->info(
+            $request->user()->id,
+            'Atualização em Lote Iniciada',
+            'Atualização em lote iniciada!',
+            ['job_type' => 'batch_permissions', 'document_count' => count($documentIds)]
+        );
+        
+        return redirect()->route('documents.index');
     }
     
     private function previewBatchChanges($documentIds, $readGroupIds, $writeGroupIds)
     {
-        $documents = Document::whereIn('_id', $documentIds)->get(['_id', 'title', 'permissions']);
-        $groups = Group::whereIn('_id', array_merge($readGroupIds, $writeGroupIds))->get(['_id', 'name']);
+        $documents = Document::whereIn('_id', $documentIds)->get(['_id', 'title', 'permissions', 'metadata']);
+        $allGroupIds = array_merge($readGroupIds, $writeGroupIds);
+        $groups = Group::whereIn('_id', $allGroupIds)->get(['_id', 'name']);
+        
+        // Criar mapa de grupos para facilitar lookup
+        $groupMap = $groups->keyBy('_id')->map(fn($group) => $group->name);
         
         $changes = [];
+        $summary = [
+            'total_documents' => count($documents),
+            'documents_with_changes' => 0,
+            'documents_unchanged' => 0,
+            'total_permissions_added' => 0,
+            'total_permissions_removed' => 0,
+        ];
+        
         foreach ($documents as $document) {
             $currentReadGroups = $document->permissions['read_group_ids'] ?? [];
             $currentWriteGroups = $document->permissions['write_group_ids'] ?? [];
@@ -465,28 +504,130 @@ class DocumentController extends Controller{
             $currentReadGroupStrings = array_map(fn($id) => (string) $id, $currentReadGroups);
             $currentWriteGroupStrings = array_map(fn($id) => (string) $id, $currentWriteGroups);
             
+            // Calcular diferenças
             $readGroupsToAdd = array_diff($readGroupIds, $currentReadGroupStrings);
             $readGroupsToRemove = array_diff($currentReadGroupStrings, $readGroupIds);
             $writeGroupsToAdd = array_diff($writeGroupIds, $currentWriteGroupStrings);
             $writeGroupsToRemove = array_diff($currentWriteGroupStrings, $writeGroupIds);
             
-            if (!empty($readGroupsToAdd) || !empty($readGroupsToRemove) || !empty($writeGroupsToAdd) || !empty($writeGroupsToRemove)) {
+            // Obter nomes dos grupos para exibição
+            $readGroupNamesToAdd = array_filter(array_map(fn($id) => $groupMap->get($id), $readGroupsToAdd));
+            $readGroupNamesToRemove = array_filter(array_map(fn($id) => $groupMap->get($id), $readGroupsToRemove));
+            $writeGroupNamesToAdd = array_filter(array_map(fn($id) => $groupMap->get($id), $writeGroupsToAdd));
+            $writeGroupNamesToRemove = array_filter(array_map(fn($id) => $groupMap->get($id), $writeGroupsToRemove));
+            
+            $hasChanges = !empty($readGroupsToAdd) || !empty($readGroupsToRemove) || 
+                         !empty($writeGroupsToAdd) || !empty($writeGroupsToRemove);
+            
+            if ($hasChanges) {
+                $summary['documents_with_changes']++;
+                $summary['total_permissions_added'] += count($readGroupsToAdd) + count($writeGroupsToAdd);
+                $summary['total_permissions_removed'] += count($readGroupsToRemove) + count($writeGroupsToRemove);
+                
                 $changes[] = [
                     'document_id' => (string) $document->_id,
                     'document_title' => $document->title,
-                    'read_groups_to_add' => $readGroupsToAdd,
-                    'read_groups_to_remove' => $readGroupsToRemove,
-                    'write_groups_to_add' => $writeGroupsToAdd,
-                    'write_groups_to_remove' => $writeGroupsToRemove,
+                    'document_type' => $document->metadata['document_type'] ?? 'N/A',
+                    'current_permissions' => [
+                        'read_groups' => array_filter(array_map(fn($id) => $groupMap->get($id), $currentReadGroupStrings)),
+                        'write_groups' => array_filter(array_map(fn($id) => $groupMap->get($id), $currentWriteGroupStrings)),
+                    ],
+                    'new_permissions' => [
+                        'read_groups' => array_filter(array_map(fn($id) => $groupMap->get($id), $readGroupIds)),
+                        'write_groups' => array_filter(array_map(fn($id) => $groupMap->get($id), $writeGroupIds)),
+                    ],
+                    'changes' => [
+                        'read_groups_to_add' => $readGroupNamesToAdd,
+                        'read_groups_to_remove' => $readGroupNamesToRemove,
+                        'write_groups_to_add' => $writeGroupNamesToAdd,
+                        'write_groups_to_remove' => $writeGroupNamesToRemove,
+                    ],
+                    'change_count' => count($readGroupsToAdd) + count($readGroupsToRemove) + 
+                                   count($writeGroupsToAdd) + count($writeGroupsToRemove),
                 ];
+            } else {
+                $summary['documents_unchanged']++;
             }
         }
         
+        // Ordenar documentos por quantidade de mudanças (mais mudanças primeiro)
+        usort($changes, fn($a, $b) => $b['change_count'] <=> $a['change_count']);
+        
         return response()->json([
+            'success' => true,
+            'summary' => $summary,
             'changes' => $changes,
             'groups' => $groups,
-            'total_documents' => count($documents),
-            'documents_with_changes' => count($changes),
+            'preview_timestamp' => now()->toISOString(),
+            'warning_messages' => $this->generateWarningMessages($changes, $summary),
+        ]);
+    }
+    
+    private function generateWarningMessages($changes, $summary)
+    {
+        $warnings = [];
+        
+        // Avisos sobre remoção de permissões
+        if ($summary['total_permissions_removed'] > 0) {
+            $warnings[] = "ATENÇÃO: {$summary['total_permissions_removed']} permissões serão REMOVIDAS.";
+        }
+        
+        // Avisos sobre documentos sem permissões
+        $documentsWithoutRead = array_filter($changes, fn($change) => 
+            empty($change['new_permissions']['read_groups'])
+        );
+        
+        if (!empty($documentsWithoutRead)) {
+            $warnings[] = "CUIDADO: " . count($documentsWithoutRead) . " documento(s) ficarão SEM permissões de leitura.";
+        }
+        
+        $documentsWithoutWrite = array_filter($changes, fn($change) => 
+            empty($change['new_permissions']['write_groups'])
+        );
+        
+        if (!empty($documentsWithoutWrite)) {
+            $warnings[] = "CUIDADO: " . count($documentsWithoutWrite) . " documento(s) ficarão SEM permissões de escrita.";
+        }
+        
+        return $warnings;
+    }
+
+    public function getNotifications(Request $request)
+    {
+        $user = $request->user();
+        if (!$user) {
+            Log::warning('getNotifications: Usuário não autenticado');
+            return response()->json(['success' => false, 'notifications' => []]);
+        }
+
+        // Usar o novo serviço de notificações
+        $notificationService = app(\App\Services\EnhancedNotificationService::class);
+        
+        // Buscar últimas 5 notificações não lidas para o popup
+        $recentNotifications = $notificationService->getForUser($user->id, true, null, null, 5);
+        $unreadCount = $notificationService->getUnreadCount($user->id);
+
+        // Converter para formato compatível com frontend
+        $formattedNotifications = $recentNotifications->map(function($notification) {
+            return [
+                'id' => (string) $notification->_id,
+                'title' => $notification->title,
+                'message' => $notification->message,
+                'type' => $notification->type,
+                'category' => $notification->category,
+                'data' => $notification->data,
+                'created_at' => $notification->created_at->toISOString(),
+                'time_ago' => $notification->created_at->diffForHumans(),
+                'is_read' => $notification->isRead()
+            ];
+        });
+
+        return response()->json([
+            'success' => true, 
+            'notifications' => $formattedNotifications,
+            'unread_count' => $unreadCount,
+            // Para compatibilidade com código antigo - usar apenas se não há notificações do novo sistema
+            'notification' => $formattedNotifications->first()['message'] ?? null
         ]);
     }
 
