@@ -102,141 +102,149 @@ const selectedWriteGroupNames = computed(() => initialWriteGroups.value.map(g =>
 
 <template>
 
+
     <Head :title="`Importar Documentos`" />
-
     <DashboardLayout :breadcrumbs="breadcrumbs">
-        <div class="container mx-auto py-6 px-4 sm:px-6 lg:px-8">
-            <div class="flex flex-col sm:flex-row justify-between items-center mb-6 gap-4">
-                <h1 class="text-2xl md:text-3xl font-semibold text-foreground">
-                    Importar Documentos via CSV
+        <div class="container mx-auto py-8 px-4">
+            <div class="mb-8">
+                <h1 class="text-4xl font-bold text-gray-900 dark:text-white mb-2">
+                    Importar Documentos
                 </h1>
+                <p class="text-gray-600 dark:text-gray-400 text-lg">
+                    Faça upload de um arquivo CSV para importar documentos em lote, atribuindo permissões de leitura e escrita.
+                </p>
             </div>
 
-            <!--div v-if="page.props.flash.success"
-                class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative mb-4"
-                role="alert">
-                <span class="block sm:inline">{{ page.props.flash.success }}</span>
-            </div>
-            <div v-if="page.props.flash.error"
-                class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4" role="alert">
-                <span class="block sm:inline">{{ page.props.flash.error }}</span>
-            </div-->
-            
             <div v-if="importErrors.length > 0"
-                class="bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded relative mb-4 max-h-[100px] overflow-y-auto"
-                role="alert">
-                <p class="font-bold">Atenção! Alguns itens foram ignorados durante a importação:</p>
+                class="mb-8 bg-gradient-to-r from-yellow-400 to-yellow-500 text-yellow-900 p-6 rounded-2xl shadow-lg backdrop-blur-sm max-w-xl mx-auto border border-yellow-600">
+                <div class="flex items-center gap-3 mb-3">
+                    <div class="w-8 h-8 bg-yellow-600/20 rounded-full flex items-center justify-center">
+                        <span class="text-yellow-900 font-bold">!</span>
+                    </div>
+                    <h3 class="font-semibold text-xl">Atenção</h3>
+                </div>
+                <p class="text-yellow-900/90 mb-1">Alguns itens foram ignorados durante a importação:</p>
                 <ul class="mt-2 list-disc list-inside">
                     <li v-for="(error, index) in importErrors" :key="index">{{ error }}</li>
                 </ul>
             </div>
 
-            <div>
-                <form @submit.prevent="submit">
-                    <Card>
-                        <CardContent>
-                            <div class="mb-4">
-                                <InputLabel for="csv_file" value="Arquivo CSV" />
-                                <input id="csv_file" type="file" @change="handleFileUpload" class="mt-1 block w-full text-sm text-gray-500
-                                    file:mr-4 file:py-2 file:px-4
-                                    file:rounded-full file:border-0
-                                    file:text-sm file:font-semibold
-                                    file:bg-violet-50 file:text-violet-700
-                                    hover:file:bg-violet-100" accept=".csv" />
-                                <InputError :message="form.errors.csv_file" class="mt-2" />
-                            </div>
+            <form @submit.prevent="submit" class="max-w-2xl mx-auto">
+                <div class="bg-white dark:bg-zinc-900 rounded-2xl shadow-xl p-8 border border-gray-200 dark:border-zinc-700">
+                    <div class="mb-6">
+                        <InputLabel for="csv_file" value="Arquivo CSV" class="text-lg font-semibold" />
+                        <input id="csv_file" type="file" @change="handleFileUpload"
+                            class="mt-2 block w-full rounded-xl border-2 border-indigo-300 dark:border-indigo-700 bg-indigo-50 dark:bg-zinc-900 px-4 py-3 text-base text-gray-700 dark:text-gray-200 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-base file:font-semibold file:bg-indigo-600 file:text-white hover:file:bg-indigo-700"
+                            accept=".csv" />
+                        <InputError :message="form.errors.csv_file" class="mt-2" />
+                    </div>
 
-                            <div class="mb-4">
-                                <div class="flex justify-between items-center mb-2">
-                                    <Label>Grupos de Leitura</Label>
-                                    <Button type="button" variant="outline" size="sm" @click="isReadModalOpen = true">
-                                        Editar Grupos
-                                    </Button>
-                                </div>
-                                <div v-if="selectedReadGroupNames.length > 0"
-                                    class="flex flex-wrap gap-2 rounded-lg border bg-muted/50 p-3 min-h-[40px] items-center dark:bg-gray-900 dark:border-gray-700">
-                                    <span v-for="groupName in selectedReadGroupNames" :key="groupName"
-                                        class="inline-flex items-center rounded-full bg-indigo-600 px-3 py-1 text-sm font-semibold shadow-sm text-white dark:bg-indigo-700">
-                                        {{ groupName }}
-                                    </span>
-                                </div>
-                                <div v-else
-                                    class="flex items-center justify-center rounded-lg border p-3 min-h-[40px] text-sm text-muted-foreground dark:bg-gray-900 dark:border-gray-700 dark:text-gray-400">
-                                    <span>Nenhum grupo de leitura selecionado.</span>
-                                </div>
-                                <InputError :message="form.errors.read_group_ids" class="mt-2" />
-                            </div>
+                    <div class="mb-6">
+                        <div class="flex justify-between items-center mb-2">
+                            <Label class="text-lg font-semibold">Grupos de Leitura</Label>
+                            <Button type="button" variant="outline" size="sm" @click="isReadModalOpen = true" class="transition-all duration-200 bg-indigo-600 hover:bg-indigo-700 text-white">
+                                Editar Grupos
+                            </Button>
+                        </div>
+                        <div v-if="selectedReadGroupNames.length > 0"
+                            class="flex flex-wrap gap-2 rounded-xl border-2 border-indigo-300 dark:border-indigo-700 bg-indigo-50 dark:bg-zinc-800 p-3 min-h-[40px] items-center">
+                            <span v-for="groupName in selectedReadGroupNames" :key="groupName"
+                                class="inline-flex items-center rounded-full bg-indigo-600 px-3 py-1 text-base font-semibold shadow-sm text-white dark:bg-indigo-700">
+                                {{ groupName }}
+                            </span>
+                        </div>
+                        <div v-else
+                            class="flex items-center justify-center rounded-xl border-2 border-indigo-300 dark:border-indigo-700 bg-indigo-50 dark:bg-zinc-800 p-3 min-h-[40px] text-base text-muted-foreground dark:text-gray-400">
+                            <span>Nenhum grupo de leitura selecionado.</span>
+                        </div>
+                        <InputError :message="form.errors.read_group_ids" class="mt-2" />
+                    </div>
 
-                            <div class="mb-4">
-                                <div class="flex justify-between items-center mb-2">
-                                    <Label>Grupos de Escrita</Label>
-                                    <Button type="button" variant="outline" size="sm" @click="isWriteModalOpen = true">
-                                        Editar Grupos
-                                    </Button>
-                                </div>
-                                <div v-if="selectedWriteGroupNames.length > 0"
-                                    class="flex flex-wrap gap-2 rounded-lg border bg-muted/50 p-3 min-h-[40px] items-center dark:bg-gray-900 dark:border-gray-700">
-                                    <span v-for="groupName in selectedWriteGroupNames" :key="groupName"
-                                        class="inline-flex items-center rounded-full bg-indigo-600 px-3 py-1 text-sm font-semibold shadow-sm text-white dark:bg-indigo-700">
-                                        {{ groupName }}
-                                    </span>
-                                </div>
-                                <div v-else
-                                    class="flex items-center justify-center rounded-lg border p-3 min-h-[40px] text-sm text-muted-foreground dark:bg-gray-900 dark:border-gray-700 dark:text-gray-400">
-                                    <span>Nenhum grupo de escrita selecionado.</span>
-                                </div>
-                                <InputError :message="form.errors.write_group_ids" class="mt-2" />
-                            </div>
+                    <div class="mb-6">
+                        <div class="flex justify-between items-center mb-2">
+                            <Label class="text-lg font-semibold">Grupos de Escrita</Label>
+                            <Button type="button" variant="outline" size="sm" @click="isWriteModalOpen = true" class="transition-all duration-200 bg-indigo-600 hover:bg-indigo-700 text-white">
+                                Editar Grupos
+                            </Button>
+                        </div>
+                        <div v-if="selectedWriteGroupNames.length > 0"
+                            class="flex flex-wrap gap-2 rounded-xl border-2 border-indigo-300 dark:border-indigo-700 bg-indigo-50 dark:bg-zinc-800 p-3 min-h-[40px] items-center">
+                            <span v-for="groupName in selectedWriteGroupNames" :key="groupName"
+                                class="inline-flex items-center rounded-full bg-indigo-600 px-3 py-1 text-base font-semibold shadow-sm text-white dark:bg-indigo-700">
+                                {{ groupName }}
+                            </span>
+                        </div>
+                        <div v-else
+                            class="flex items-center justify-center rounded-xl border-2 border-indigo-300 dark:border-indigo-700 bg-indigo-50 dark:bg-zinc-800 p-3 min-h-[40px] text-base text-muted-foreground dark:text-gray-400">
+                            <span>Nenhum grupo de escrita selecionado.</span>
+                        </div>
+                        <InputError :message="form.errors.write_group_ids" class="mt-2" />
+                    </div>
 
-
-                        </CardContent>
-                        <CardFooter class="flex justify-end">
-                            <PrimaryButton :disabled="form.processing">
-                                {{ form.processing ? 'Salvando...' : 'Importar Documentos' }}
-                            </PrimaryButton>
-                        </CardFooter>
-                    </Card>
-                </form>
-            </div>
+                    <div class="flex justify-end mt-8">
+                        <PrimaryButton :disabled="form.processing" class="px-8 py-3 text-lg rounded-xl shadow-lg bg-indigo-600 hover:bg-indigo-700 text-white font-bold transition-all duration-200">
+                            {{ form.processing ? 'Salvando...' : 'Importar Documentos' }}
+                        </PrimaryButton>
+                    </div>
+                </div>
+            </form>
         </div>
+
+        <GroupManagerModal v-model="isReadModalOpen" :all-groups="props.groups" :initial-selected-groups="initialReadGroups"
+            @confirm="handleReadGroupsConfirmed" :username="currentUsername" />
+
+        <GroupManagerModal v-model="isWriteModalOpen" :all-groups="props.groups"
+            :initial-selected-groups="initialWriteGroups" @confirm="handleWriteGroupsConfirmed"
+            :username="currentUsername" />
     </DashboardLayout>
-
-    <GroupManagerModal v-model="isReadModalOpen" :all-groups="props.groups" :initial-selected-groups="initialReadGroups"
-        @confirm="handleReadGroupsConfirmed" :username="currentUsername" />
-
-    <GroupManagerModal v-model="isWriteModalOpen" :all-groups="props.groups"
-        :initial-selected-groups="initialWriteGroups" @confirm="handleWriteGroupsConfirmed"
-        :username="currentUsername" />
-
 </template>
 
 <style scoped>
-/* Adapte estas classes para seu tema escuro, se não estiverem no seu tailwind.config.js */
-.dark\:bg-muted\/50 {
-    background-color: rgba(30, 30, 30, 0.5);
-    /* Um tom mais escuro para bg-muted/50 no dark mode */
+@keyframes float {
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(-5px); }
 }
 
-.dark\:border-gray-700 {
-    border-color: #4A5568;
+.group:hover {
+    animation: float 3s ease-in-out infinite;
 }
 
-.dark\:text-gray-400 {
-    color: #A0AEC0;
+.backdrop-blur-sm {
+    backdrop-filter: blur(8px);
 }
 
-.dark\:bg-indigo-700 {
-    background-color: #4338CA;
-    /* Um tom de índigo mais escuro para dark mode */
+/* Modern card shadow and border for consistency 
+.rounded-2xl {
+    border-radius: 1rem;
 }
-
-.dark\:bg-gray-900 {
-    background-color: #1A202C;
+.shadow-xl {
+    box-shadow: 0 8px 32px 0 rgba(60, 60, 120, 0.15);
 }
-
-/* Se o InputLabel tiver bg-black, você pode querer adicionar o text-white */
-.dark\:bg-black {
-    background-color: black;
-    color: white;
+.border-indigo-300 {
+    border-color: #a5b4fc;
 }
+.dark .border-indigo-700 {
+    border-color: #4338ca;
+}
+.bg-indigo-50 {
+    background-color: #eef2ff;
+}
+.dark .bg-zinc-800 {
+    background-color: #18181b;
+}
+.dark .text-gray-400 {
+    color: #a0aec0;
+}
+.dark .bg-indigo-700 {
+    background-color: #4338ca;
+}
+.dark .bg-zinc-900 {
+    background-color: #18181b;
+}
+.dark .border-zinc-700 {
+    border-color: #3f3f46;
+}
+.dark .text-white {
+    color: #fff;
+}*/
 </style>

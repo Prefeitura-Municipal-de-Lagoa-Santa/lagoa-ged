@@ -69,67 +69,72 @@ const buttonText = computed(() => {
 
 <template>
     <form @submit.prevent="submitForm">
-        <Card>
-            <CardContent class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div class="gap-2 md:col-span-2">
-                    <Label class="h-8" for="full_name">Nome</Label>
-                    <Input :disabled="isDisabled" id="full_name" type="text" v-model="props.form.full_name" />
-                    <div v-if="props.form.errors.full_name" class="text-sm text-red-500">{{ props.form.errors.full_name }}</div>
+        <div class="grid gap-6">
+            <div class="grid gap-2 md:col-span-2">
+                <Label for="full_name" class="text-base font-semibold text-gray-700 dark:text-gray-200">Nome</Label>
+                <Input :disabled="isDisabled" id="full_name" type="text" v-model="props.form.full_name" class="bg-indigo-50 dark:bg-zinc-800 border-2 border-indigo-300 dark:border-indigo-700 rounded-xl px-4 py-2 text-gray-900 dark:text-white focus:border-indigo-500 focus:ring-indigo-500" />
+                <div v-if="props.form.errors.full_name" class="text-sm text-red-500">{{ props.form.errors.full_name }}</div>
+            </div>
+
+            <div class="grid gap-2">
+                <Label for="username" class="text-base font-semibold text-gray-700 dark:text-gray-200">Usuário</Label>
+                <Input :disabled="props.isEditing && isDisabled" id="username" type="text" v-model="props.form.username" class="bg-indigo-50 dark:bg-zinc-800 border-2 border-indigo-300 dark:border-indigo-700 rounded-xl px-4 py-2 text-gray-900 dark:text-white focus:border-indigo-500 focus:ring-indigo-500" />
+                <div v-if="props.form.errors.username" class="text-sm text-red-500">{{ props.form.errors.username }}</div>
+            </div>
+
+            <div class="grid gap-2">
+                <Label for="email" class="text-base font-semibold text-gray-700 dark:text-gray-200">E-mail</Label>
+                <Input :disabled="isDisabled" id="email" v-model="props.form.email" class="bg-indigo-50 dark:bg-zinc-800 border-2 border-indigo-300 dark:border-indigo-700 rounded-xl px-4 py-2 text-gray-900 dark:text-white focus:border-indigo-500 focus:ring-indigo-500" />
+                <div v-if="props.form.errors.email" class="text-sm text-red-500">{{ props.form.errors.email }}</div>
+            </div>
+
+            <div v-if="!props.isEditing" class="grid gap-2">
+                <Label for="password" class="text-base font-semibold text-gray-700 dark:text-gray-200">Senha</Label>
+                <Input :disabled="isDisabled" id="password" type="password" v-model="props.form.password" class="bg-indigo-50 dark:bg-zinc-800 border-2 border-indigo-300 dark:border-indigo-700 rounded-xl px-4 py-2 text-gray-900 dark:text-white focus:border-indigo-500 focus:ring-indigo-500" />
+                <div v-if="props.form.errors.password" class="text-sm text-red-500">{{ props.form.errors.password }}</div>
+            </div>
+            <div v-if="!props.isEditing" class="grid gap-2">
+                <Label for="password_confirmation" class="text-base font-semibold text-gray-700 dark:text-gray-200">Confirme a Senha</Label>
+                <Input :disabled="isDisabled" id="password_confirmation" type="password" v-model="props.form.password_confirmation" class="bg-indigo-50 dark:bg-zinc-800 border-2 border-indigo-300 dark:border-indigo-700 rounded-xl px-4 py-2 text-gray-900 dark:text-white focus:border-indigo-500 focus:ring-indigo-500" />
+                <div v-if="props.form.errors.password_confirmation" class="text-sm text-red-500">{{ props.form.errors.password_confirmation }}</div>
+            </div>
+
+            <div class="grid gap-2 md:col-span-2">
+                <div class="flex justify-between items-center mb-2">
+                    <Label class="text-base font-semibold text-gray-700 dark:text-gray-200">Grupos</Label>
+                    <Button type="button" variant="outline" size="sm" @click="isModalOpen = true" class="transition-all duration-200">
+                        {{ props.isEditing ? 'Editar Grupos' :'Adicionar Grupos' }}
+                    </Button>
                 </div>
 
-                <div class="grid gap-3">
-                    <Label for="username">Usuário</Label>
-                    <Input :disabled="props.isEditing && isDisabled" id="username" type="text" v-model="props.form.username" />
-                    <div v-if="props.form.errors.username" class="text-sm text-red-500">{{ props.form.errors.username }}</div>
+                <div v-if="props.form.userGroups && props.form.userGroups.length > 0"
+                    class="flex flex-wrap gap-2 rounded-xl border-2 border-indigo-300 dark:border-indigo-700 bg-indigo-50 dark:bg-zinc-800 p-3 min-h-[40px] items-center">
+                    <span v-for="group in props.form.userGroups" :key="group.id"
+                        class="inline-flex items-center rounded-full bg-indigo-600 px-3 py-1 text-base font-semibold shadow-sm text-white dark:bg-indigo-700">
+                        {{ group.name }}
+                    </span>
                 </div>
 
-                <div class="grid gap-3">
-                    <Label for="email">E-mail</Label>
-                    <Input :disabled="isDisabled" id="email" v-model="props.form.email" />
-                    <div v-if="props.form.errors.email" class="text-sm text-red-500">{{ props.form.errors.email }}</div>
+                <div v-else
+                    class="flex items-center justify-center rounded-xl border-2 border-indigo-300 dark:border-indigo-700 bg-indigo-50 dark:bg-zinc-800 p-3 min-h-[40px] text-base text-muted-foreground dark:text-gray-400">
+                    <span>Este usuário não pertence a nenhum grupo.</span>
                 </div>
-                <div v-if="!props.isEditing" class="grid gap-3">
-                    <Label for="password">Senha</Label>
-                    <Input :disabled="isDisabled" id="password" type="password" v-model="props.form.password" />
-                    <div v-if="props.form.errors.password" class="text-sm text-red-500">{{ props.form.errors.password }}</div>
-                </div>
-                <div v-if="!props.isEditing" class="grid gap-3">
-                    <Label for="password_confirmation">Confirme a Senha</Label>
-                    <Input :disabled="isDisabled" id="password_confirmation" type="password" v-model="props.form.password_confirmation" />
-                    <div v-if="props.form.errors.password_confirmation" class="text-sm text-red-500">{{ props.form.errors.password_confirmation }}</div>
-                </div>
+            </div>
 
-                <div class="grid gap-2 md:col-span-2">
-                    <div class="flex justify-between items-center mb-2">
-                        <Label>Grupos</Label>
-                        <Button type="button" variant="outline" size="sm" @click="isModalOpen = true"
-                        > {{ props.isEditing ? 'Editar Grupos' :'Adicionar Grupos' }}
-                        </Button>
-                    </div>
-
-                    <div v-if="props.form.userGroups && props.form.userGroups.length > 0"
-                         class="flex flex-wrap gap-2 rounded-lg border bg-muted/50 p-3 min-h-[40px] items-center">
-                        <span v-for="group in props.form.userGroups" :key="group.id"
-                              class="inline-flex items-center rounded-full bg-muted px-10 py-1 text-sm font-semibold shadow-sm">
-                            {{ group.name }}
-                        </span>
-                    </div>
-
-                    <div v-else
-                         class="flex items-center justify-center rounded-lg border p-3 min-h-[40px] text-sm text-muted-foreground">
-                        <span>Este usuário não pertence a nenhum grupo.</span>
-                    </div>
-                </div>
-
-            </CardContent>
-
-            <CardFooter class="flex justify-end">
-                <Button type="submit" :disabled="props.form.processing">
+            <div class="flex justify-end md:col-span-2">
+                <Button type="submit" :disabled="props.form.processing" class="px-8 py-3 text-lg rounded-xl shadow-lg bg-indigo-600 hover:bg-indigo-700 text-white font-bold transition-all duration-200">
                     {{ buttonText }}
                 </Button>
-            </CardFooter>
-        </Card>
+            </div>
+        </div>
     </form>
+
+    <GroupManagerModal 
+        v-model="isModalOpen"
+        :all-groups="props.allGroups"
+        :initial-selected-groups="props.form.userGroups"
+        :username="props.user ? props.user.username : 'Novo Usuário'" @confirm="handleGroupUpdate"
+    />
 
     <GroupManagerModal 
         v-model="isModalOpen"

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { ArrowRight, ArrowLeft, ArrowUp, ArrowDown } from 'lucide-vue-next';
 import { computed, ref } from 'vue';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter } from '@/components/ui/card'; // Importar apenas o que é usado aqui
@@ -38,28 +39,41 @@ const props = defineProps<Props>();
 const selectedAvailable = ref<string[]>([]);
 const selectedMembers = ref<string[]>([]);
 
+// Helper para garantir que user_ids é sempre um array de strings
+function getUserIds(): string[] {
+    const ids = props.form.user_ids;
+    if (Array.isArray(ids)) {
+        return ids.map(id => String(id));
+    }
+    return [];
+}
+
 // Usuários que ainda não são membros do grupo
 const availableUsers = computed(() => {
-    // Filtra allUsers para incluir apenas aqueles cujo ID não está no form.user_ids
-    return props.allUsers.filter(user => !props.form.user_ids.includes(user.id));
+    const userIds = getUserIds();
+    return props.allUsers.filter(user => !userIds.includes(user.id));
 });
 
 // Usuários que são membros do grupo
 const groupMembers = computed(() => {
-    // Filtra allUsers para incluir apenas aqueles cujo ID está no form.user_ids
-    return props.allUsers.filter(user => props.form.user_ids.includes(user.id));
+    const userIds = getUserIds();
+    return props.allUsers.filter(user => userIds.includes(user.id));
 });
 
 // Função para adicionar membros do lado esquerdo para o direito
 function addMembers() {
-    props.form.user_ids.push(...selectedAvailable.value);
-    selectedAvailable.value = []; // Limpa a seleção
+    let userIds = getUserIds();
+    userIds = [...userIds, ...selectedAvailable.value];
+    props.form.user_ids = userIds;
+    selectedAvailable.value = [];
 }
 
 // Função para remover membros do lado direito para o esquerdo
 function removeMembers() {
-    props.form.user_ids = props.form.user_ids.filter(id => !selectedMembers.value.includes(id));
-    selectedMembers.value = []; // Limpa a seleção
+    let userIds = getUserIds();
+    userIds = userIds.filter(id => !selectedMembers.value.includes(id));
+    props.form.user_ids = userIds;
+    selectedMembers.value = [];
 }
 
 // Emite o evento 'submit' para o componente pai
@@ -84,63 +98,61 @@ const buttonText = computed(() => {
 
 <template>
     <form @submit.prevent="submitForm">
-        <Card>
-            <CardContent class="grid gap-6">
-                <div class="grid gap-2">
-                    <Label for="name">Nome</Label>
-                    <Input :disabled="isDisabled" class="uppercase" id="name" type="text" v-model="props.form.name" />
-                    <div v-if="props.form.errors.name" class="text-sm text-red-500">{{ props.form.errors.name }}</div>
-                </div>
+        <div class="grid gap-6">
+            <div class="grid gap-2">
+                <Label for="name" class="text-base font-semibold text-gray-700 dark:text-gray-200">Nome</Label>
+                <Input :disabled="isDisabled" class="uppercase bg-indigo-50 dark:bg-zinc-800 border-2 border-indigo-300 dark:border-indigo-700 rounded-xl px-4 py-2 text-gray-900 dark:text-white focus:border-indigo-500 focus:ring-indigo-500" id="name" type="text" v-model="props.form.name" />
+                <div v-if="props.form.errors.name" class="text-sm text-red-500">{{ props.form.errors.name }}</div>
+            </div>
 
-                <div class="grid gap-2">
-                    <Label for="description">Descrição</Label>
-                    <Textarea :disabled="isDisabled" id="description" v-model="props.form.description" />
-                    <div v-if="props.form.errors.description" class="text-sm text-red-500">{{ props.form.errors.description }}</div>
-                </div>
+            <div class="grid gap-2">
+                <Label for="description" class="text-base font-semibold text-gray-700 dark:text-gray-200">Descrição</Label>
+                <Textarea :disabled="isDisabled" id="description" v-model="props.form.description" class="bg-indigo-50 dark:bg-zinc-800 border-2 border-indigo-300 dark:border-indigo-700 rounded-xl px-4 py-2 text-gray-900 dark:text-white focus:border-indigo-500 focus:ring-indigo-500" />
+                <div v-if="props.form.errors.description" class="text-sm text-red-500">{{ props.form.errors.description }}</div>
+            </div>
 
-                <div class="grid gap-2">
-                    <Label>Membros do Grupo</Label>
-                    <div class="grid grid-cols-1 md:grid-cols-[1fr_auto_1fr] items-center gap-4">
-                        <div class="flex flex-col gap-2">
-                            <span class="text-sm font-medium text-center">Usuários Disponíveis</span>
-                            <select multiple class="bg-card border rounded-md h-48 p-2"
-                                v-model="selectedAvailable">
-                                <option v-for="user in availableUsers" :key="user.id" :value="user.id">
-                                    {{ user.full_name }}
-                                </option>
-                            </select>
-                        </div>
-
-                        <div class="flex flex-col gap-2">
-                            <Button type="button" @click="addMembers" :disabled="selectedAvailable.length === 0">
-                                &gt;&gt;
-                            </Button>
-                            <Button type="button" @click="removeMembers" :disabled="selectedMembers.length === 0" variant="destructive">
-                                &lt;&lt;
-                            </Button>
-                        </div>
-
-                        <div class="flex flex-col gap-2">
-                            <span class="text-sm font-medium text-center">Membros no Grupo</span>
-                            <select multiple class="bg-card border rounded-md h-48 p-2"
-                                v-model="selectedMembers">
-                                <option v-for="user in groupMembers" :key="user.id" :value="user.id">
-                                    {{ user.full_name }}
-                                </option>
-                            </select>
-                        </div>
+            <div class="grid gap-2">
+                <Label class="text-base font-semibold text-gray-700 dark:text-gray-200">Membros do Grupo</Label>
+                <div class="grid grid-cols-1 md:grid-cols-[1fr_auto_1fr] items-center gap-4">
+                    <div class="flex flex-col gap-2">
+                        <span class="text-sm font-medium text-center text-gray-700 dark:text-gray-200">Usuários Disponíveis</span>
+                        <select multiple class="bg-indigo-50 dark:bg-zinc-800 border-2 border-indigo-300 dark:border-indigo-700 rounded-xl h-48 p-2 text-gray-900 dark:text-white" v-model="selectedAvailable">
+                            <option v-for="user in availableUsers" :key="user.id" :value="user.id">
+                                {{ user.full_name }}
+                            </option>
+                        </select>
                     </div>
-                    <div v-if="props.form.errors.user_ids" class="text-sm text-red-500 mt-2">
-                        {{ props.form.errors.user_ids }}
+
+                    <div class="flex flex-col gap-2 items-center justify-center">
+                        <Button type="button" @click="addMembers" :disabled="selectedAvailable.length === 0" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-4 py-2 rounded-xl transition-all duration-200 flex items-center justify-center">
+                            <ArrowRight class="hidden md:inline w-5 h-5" />
+                            <ArrowUp class="md:hidden w-5 h-5" />
+                        </Button>
+                        <Button type="button" @click="removeMembers" :disabled="selectedMembers.length === 0" variant="destructive" class="px-4 py-2 rounded-xl flex items-center justify-center">
+                            <ArrowLeft class="hidden md:inline w-5 h-5" />
+                            <ArrowDown class="md:hidden w-5 h-5" />
+                        </Button>
+                    </div>
+
+                    <div class="flex flex-col gap-2">
+                        <span class="text-sm font-medium text-center text-gray-700 dark:text-gray-200">Membros no Grupo</span>
+                        <select multiple class="bg-indigo-50 dark:bg-zinc-800 border-2 border-indigo-300 dark:border-indigo-700 rounded-xl h-48 p-2 text-gray-900 dark:text-white" v-model="selectedMembers">
+                            <option v-for="user in groupMembers" :key="user.id" :value="user.id">
+                                {{ user.full_name }}
+                            </option>
+                        </select>
                     </div>
                 </div>
-            </CardContent>
+                <div v-if="props.form.errors.user_ids" class="text-sm text-red-500 mt-2">
+                    {{ props.form.errors.user_ids }}
+                </div>
+            </div>
 
-            <CardFooter class="flex justify-end">
-                <Button type="submit" :disabled="props.form.processing">
+            <div class="flex justify-end">
+                <Button type="submit" :disabled="props.form.processing" class="px-8 py-3 text-lg rounded-xl shadow-lg bg-indigo-600 hover:bg-indigo-700 text-white font-bold transition-all duration-200">
                     {{ buttonText }}
                 </Button>
-            </CardFooter>
-        </Card>
+            </div>
+        </div>
     </form>
 </template>
