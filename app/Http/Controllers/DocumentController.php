@@ -214,7 +214,7 @@ class DocumentController extends Controller
         return $years;
     }
 
-    public function view(Document $document)
+    public function view(Document $document, Request $request)
     {
         $user = Auth::user();
         if (!$user) {
@@ -248,9 +248,14 @@ class DocumentController extends Controller
         $fileName = $document->filename ?? basename($filePath);
         $mimeType = $document->mime_type ?? Storage::disk('samba')->mimeType($filePath);
 
-        return Storage::disk('samba')->response($filePath, $fileName, [
+        // Verificar se é um download forçado
+        $disposition = $request->has('download') ? 'attachment' : 'inline';
+
+        return response()->stream(function() use ($filePath) {
+            echo Storage::disk('samba')->get($filePath);
+        }, 200, [
             'Content-Type' => $mimeType,
-            'Content-Disposition' => 'inline; filename="' . $fileName . '"',
+            'Content-Disposition' => $disposition . '; filename="' . $fileName . '"',
         ]);
     }
 
