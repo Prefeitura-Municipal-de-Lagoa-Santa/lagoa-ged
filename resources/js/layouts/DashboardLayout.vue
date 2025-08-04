@@ -423,7 +423,23 @@ onBeforeUnmount(() => {
 
             <!-- Main Content Area -->
             <main class="flex-1 overflow-y-auto bg-gradient-to-br from-stone-50 via-zinc-50/30 to-slate-100/30 dark:from-zinc-900 dark:via-stone-900/70 dark:to-slate-950/30">
-                <slot />
+                <div class="min-h-full flex flex-col">
+                    <div class="flex-1">
+                        <slot />
+                    </div>
+                    
+                    <!-- Rodapé -->
+                    <footer class="mt-auto py-6 px-4 sm:px-6 lg:px-8 border-t border-gray-200 dark:border-zinc-700 bg-white/50 dark:bg-zinc-900/50 backdrop-blur-sm">
+                        <div class="container mx-auto text-center">
+                            <p class="text-sm text-gray-600 dark:text-gray-400 font-medium">
+                                Copyright © 2025 Prefeitura Municipal de Lagoa Santa
+                            </p>
+                            <p class="text-xs text-gray-500 dark:text-gray-500 mt-1">
+                                Projetado pela Diretoria de Inovação Tecnológica
+                            </p>
+                        </div>
+                    </footer>
+                </div>
             </main>
         </div>
     </div>
