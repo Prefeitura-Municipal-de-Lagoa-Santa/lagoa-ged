@@ -177,94 +177,135 @@ onBeforeUnmount(() => {
 <template>
 
     <Head title="Lagoa GED" />
-    <div class="flex h-screen overflow-hidden bg-background text-foreground">
+    <div class="flex h-screen overflow-hidden bg-gradient-to-br from-stone-50 via-zinc-50 to-slate-100 dark:from-zinc-900 dark:via-stone-900 dark:to-slate-950 text-foreground">
+        <!-- Sidebar -->
         <aside :class="[
             'fixed inset-y-0 left-0 z-30 flex flex-col transition-all duration-300 ease-in-out',
-            'bg-sidebar text-sidebar-foreground shadow-lg border-r border-sidebar-border',
-            sidebarOpen ? 'lg:w-55' : 'lg:w-28',
+            'bg-white/80 dark:bg-zinc-900/90 backdrop-blur-xl text-sidebar-foreground shadow-2xl border-r border-stone-200/50 dark:border-zinc-700/50',
+            sidebarOpen ? 'lg:w-64' : 'lg:w-28',
             'w-64',
             sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0',
         ]">
-            <div class="p-3 border-b border-sidebar-border flex items-center justify-center shrink-0"
-                :class="sidebarOpen ? 'justify-between' : 'justify-center'">
-                <Link :href="route('dashboard')" class="flex flex-col items-center overflow-hidden"
-                    :class="sidebarOpen ? 'space-x-3' : 'space-x-0'" title="Painel Principal">
-                <div class="flex items-center">
-                    <img src="/Brasao Color.png" alt="Logo Lagoa GED" class="flex-shrink-0 object-contain"
-                        :class="sidebarOpen ? 'h-15 w-auto' : 'h-9 w-auto'">
-                    <img src="/logo.png" alt="Logo Lagoa GED" class="flex-shrink-0 object-contain"
-                        :class="sidebarOpen ? 'h-15 w-auto' : 'h-9 w-auto'">
-                </div>
-                <span v-if="sidebarOpen" class="text-2xl font-semibold text-sidebar-foreground whitespace-nowrap">
-                    Lagoa GED
-                </span>
+            <!-- Logo Section -->
+            <div class="p-4 border-b border-stone-200/50 dark:border-zinc-700/50 flex items-center justify-center shrink-0 bg-gradient-to-r from-stone-600 to-zinc-700 dark:from-stone-800 dark:to-zinc-800">
+                <Link :href="route('dashboard')" class="flex flex-col items-center overflow-hidden" title="Painel Principal">
+                    <div class="flex items-center" :class="sidebarOpen ? 'space-x-2' : 'space-x-1'">
+                        <img src="/Brasao Color.png" alt="Logo Lagoa GED" class="flex-shrink-0 object-contain drop-shadow-lg"
+                            :class="sidebarOpen ? 'h-15 w-auto' : 'h-7 w-auto'">
+                        <img src="/logo.png" alt="Logo Lagoa GED" class="flex-shrink-0 object-contain drop-shadow-lg"
+                            :class="sidebarOpen ? 'h-15 w-auto' : 'h-7 w-auto'">
+                    </div>
+                    <span v-if="sidebarOpen" class="text-xl font-bold text-white whitespace-nowrap drop-shadow-md mt-2">
+                        Lagoa GED
+                    </span>
                 </Link>
             </div>
 
-            <nav class="flex-1 overflow-y-auto py-4" :class="sidebarOpen ? 'px-5' : 'px-6'">
-                <ul class="space-y-1">
+            <!-- Navigation -->
+            <nav class="flex-1 overflow-y-auto py-6" :class="sidebarOpen ? 'px-4' : 'px-3'">
+                <ul class="space-y-2">
                     <li>
                         <span v-if="sidebarOpen"
-                            class="block px-3 py-2 text-xs font-semibold text-muted-foreground uppercase">
+                            class="block px-3 py-2 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                             Navegação
                         </span>
-                        <div v-else class="h-8 flex items-center justify-center my-1" title="Navegação">
-                            <Minus />
+                        <div v-else class="h-6 flex items-center justify-center my-2" title="Navegação">
+                            <Minus class="w-4 h-4 text-slate-400" />
                         </div>
                     </li>
+                    
+                    <!-- Dashboard -->
                     <li>
                         <Link :href="route('dashboard')" :title="!sidebarOpen ? 'Dashboard' : null" :class="[
-                                'flex items-center p-3 rounded-md transition-colors duration-200 group',
+                                'flex items-center px-3 py-3 rounded-xl transition-all duration-200 group relative overflow-hidden',
                                 sidebarOpen ? 'space-x-3' : 'justify-center',
-                                route().current('dashboard') ? 'bg-cyan-600 text-sidebar-primary-foreground' : 'hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
+                                route().current('dashboard') 
+                                    ? 'bg-gradient-to-r from-stone-500 to-zinc-600 text-white shadow-lg transform scale-[1.02]' 
+                                    : 'text-slate-700 dark:text-slate-300 hover:bg-gradient-to-r hover:from-stone-50 hover:to-zinc-50 dark:hover:from-stone-900/20 dark:hover:to-zinc-900/20 hover:text-stone-700 dark:hover:text-stone-300'
                             ]">
-                        <House />
-                        <span v-if="sidebarOpen" class="whitespace-nowrap">Página Inicial</span>
-                        </Link>
-                    </li>
-                    <li>
-                        <Link :href="route('documents.index')" :title="!sidebarOpen ? 'Documentos' : null" :class="[
-                                'flex items-center p-3 rounded-md transition-colors duration-200 group',
-                                sidebarOpen ? 'space-x-3' : 'justify-center',
-                                route().current('documents.index') ? 'bg-cyan-600 text-sidebar-primary-foreground' : 'hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
-                            ]">
-                        <File />
-                        <span v-if="sidebarOpen" class="whitespace-nowrap">Documentos</span>
+                        <div :class="[
+                            'p-2 rounded-lg transition-all duration-200',
+                            route().current('dashboard') 
+                                ? 'bg-white/20 shadow-lg' 
+                                : 'group-hover:bg-stone-100 dark:group-hover:bg-stone-900/30'
+                        ]">
+                            <House :class="route().current('dashboard') ? 'w-5 h-5' : 'w-5 h-5'" />
+                        </div>
+                        <span v-if="sidebarOpen" class="font-medium whitespace-nowrap">Página Inicial</span>
                         </Link>
                     </li>
 
+                    <!-- Documents -->
+                    <li>
+                        <Link :href="route('documents.index')" :title="!sidebarOpen ? 'Documentos' : null" :class="[
+                                'flex items-center px-3 py-3 rounded-xl transition-all duration-200 group relative overflow-hidden',
+                                sidebarOpen ? 'space-x-3' : 'justify-center',
+                                route().current('documents.*') 
+                                    ? 'bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-lg transform scale-[1.02]' 
+                                    : 'text-slate-700 dark:text-slate-300 hover:bg-gradient-to-r hover:from-emerald-50 hover:to-teal-50 dark:hover:from-emerald-900/20 dark:hover:to-teal-900/20 hover:text-emerald-700 dark:hover:text-emerald-300'
+                            ]">
+                        <div :class="[
+                            'p-2 rounded-lg transition-all duration-200',
+                            route().current('documents.*') 
+                                ? 'bg-white/20 shadow-lg' 
+                                : 'group-hover:bg-emerald-100 dark:group-hover:bg-emerald-900/30'
+                        ]">
+                            <File :class="route().current('documents.*') ? 'w-5 h-5' : 'w-5 h-5'" />
+                        </div>
+                        <span v-if="sidebarOpen" class="font-medium whitespace-nowrap">Documentos</span>
+                        </Link>
+                    </li>
+
+                    <!-- Permissions Menu -->
                     <li v-if="can('view_any_groups')" ref="permissionsMenuItemRef">
                         <button @click="togglePermissionsSubmenu" :title="!sidebarOpen ? 'Permissões' : undefined" :class="[
-                                'flex items-center p-3 rounded-md transition-colors duration-200 w-full text-left group',
+                                'flex items-center px-3 py-3 rounded-xl transition-all duration-200 w-full text-left group relative overflow-hidden',
                                 sidebarOpen ? 'space-x-3' : 'justify-center',
-                                permissionsSubmenuOpen || route().current('permissions.*') || route().current('roles.*') ? 'bg-cyan-600 text-sidebar-primary-foreground' : 'hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
+                                permissionsSubmenuOpen || route().current('permissions.*') || route().current('users.*') || route().current('groups.*')
+                                    ? 'bg-gradient-to-r from-purple-500 to-violet-600 text-white shadow-lg transform scale-[1.02]' 
+                                    : 'text-slate-700 dark:text-slate-300 hover:bg-gradient-to-r hover:from-purple-50 hover:to-violet-50 dark:hover:from-purple-900/20 dark:hover:to-violet-900/20 hover:text-purple-700 dark:hover:text-purple-300'
                             ]">
-                            <MonitorCogIcon />
-                            <span v-if="sidebarOpen" class="whitespace-nowrap flex-grow">Permissões</span>
+                            <div :class="[
+                                'p-2 rounded-lg transition-all duration-200',
+                                permissionsSubmenuOpen || route().current('permissions.*') || route().current('users.*') || route().current('groups.*')
+                                    ? 'bg-white/20 shadow-lg' 
+                                    : 'group-hover:bg-purple-100 dark:group-hover:bg-purple-900/30'
+                            ]">
+                                <MonitorCogIcon class="w-5 h-5" />
+                            </div>
+                            <span v-if="sidebarOpen" class="font-medium whitespace-nowrap flex-grow">Permissões</span>
                             <svg v-if="sidebarOpen"
-                                :class="['w-4 h-4 transition-transform duration-200', { 'rotate-90': permissionsSubmenuOpen }]"
+                                :class="['w-4 h-4 transition-transform duration-300', { 'rotate-90': permissionsSubmenuOpen }]"
                                 viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                                 stroke-linecap="round" stroke-linejoin="round">
                                 <polyline points="9 18 15 12 9 6"></polyline>
                             </svg>
                         </button>
-                        <div v-if="permissionsSubmenuOpen && sidebarOpen" class="ml-4 mt-1 space-y-1">
+                        
+                        <!-- Submenu -->
+                        <div v-if="permissionsSubmenuOpen && sidebarOpen" class="ml-6 mt-2 space-y-1 border-l-2 border-purple-200 dark:border-purple-700 pl-4">
                             <Link :href="route('groups.index')"
-                                class="flex items-center p-2 rounded-md transition-colors duration-200 group text-sm"
-                                :class="[route().current('groups.index') ? 'bg-cyan-700 text-sidebar-primary-foreground' : 'hover:bg-sidebar-accent hover:text-sidebar-accent-foreground']">
-                            <Shield class="w-4 h-4 mr-2" />
+                                class="flex items-center px-3 py-2 rounded-lg transition-all duration-200 group text-sm"
+                                :class="[route().current('groups.*') 
+                                    ? 'bg-gradient-to-r from-purple-100 to-violet-100 dark:from-purple-900/40 dark:to-violet-900/40 text-purple-700 dark:text-purple-300 font-medium' 
+                                    : 'text-slate-600 dark:text-slate-400 hover:bg-purple-50 dark:hover:bg-purple-900/20 hover:text-purple-600 dark:hover:text-purple-300']">
+                            <Shield class="w-4 h-4 mr-3" />
                             <span>Grupos</span>
                             </Link>
                             <Link :href="route('users.index')"
-                                class="flex items-center p-2 rounded-md transition-colors duration-200 group text-sm"
-                                :class="[route().current('users.index') ? 'bg-cyan-700 text-sidebar-primary-foreground' : 'hover:bg-sidebar-accent hover:text-sidebar-accent-foreground']">
-                            <UserCog2 class="w-4 h-4 mr-2" />
+                                class="flex items-center px-3 py-2 rounded-lg transition-all duration-200 group text-sm"
+                                :class="[route().current('users.*') 
+                                    ? 'bg-gradient-to-r from-purple-100 to-violet-100 dark:from-purple-900/40 dark:to-violet-900/40 text-purple-700 dark:text-purple-300 font-medium' 
+                                    : 'text-slate-600 dark:text-slate-400 hover:bg-purple-50 dark:hover:bg-purple-900/20 hover:text-purple-600 dark:hover:text-purple-300']">
+                            <UserCog2 class="w-4 h-4 mr-3" />
                             <span>Usuários</span>
                             </Link>
                             <Link :href="route('documents.batch-permissions')"
-                                class="flex items-center p-2 rounded-md transition-colors duration-200 group text-sm"
-                                :class="[route().current('documents.batch-permissions') ? 'bg-cyan-700 text-sidebar-primary-foreground' : 'hover:bg-sidebar-accent hover:text-sidebar-accent-foreground']">
-                            <FileCogIcon class="w-4 h-4 mr-2" />
+                                class="flex items-center px-3 py-2 rounded-lg transition-all duration-200 group text-sm"
+                                :class="[route().current('documents.batch-permissions') 
+                                    ? 'bg-gradient-to-r from-purple-100 to-violet-100 dark:from-purple-900/40 dark:to-violet-900/40 text-purple-700 dark:text-purple-300 font-medium' 
+                                    : 'text-slate-600 dark:text-slate-400 hover:bg-purple-50 dark:hover:bg-purple-900/20 hover:text-purple-600 dark:hover:text-purple-300']">
+                            <FileCogIcon class="w-4 h-4 mr-3" />
                             <span>Documentos</span>
                             </Link>
                         </div>
@@ -273,89 +314,106 @@ onBeforeUnmount(() => {
             </nav>
         </aside>
 
-        <div v-if="sidebarOpen" @click="toggleSidebar" class="fixed inset-0 bg-opacity-25 z-20 lg:hidden">
+        <!-- Overlay for mobile -->
+        <div v-if="sidebarOpen" @click="toggleSidebar" class="fixed inset-0 bg-black/20 backdrop-blur-sm z-20 lg:hidden transition-opacity duration-300">
         </div>
 
+        <!-- Main Content -->
         <div class="flex-1 flex flex-col min-w-0 transition-all duration-300 ease-in-out" :class="{
-                'lg:ml-55': sidebarOpen,
+                'lg:ml-64': sidebarOpen,
                 'lg:ml-28': !sidebarOpen,
             }">
-            <header
-                class="h-16 bg-card text-card-foreground shadow-md flex items-center justify-between px-6 z-10 shrink-0">
-                <button @click="toggleSidebar" title="Abrir/Fechar Menu"
-                    class="p-2 rounded-md focus:outline-none focus:ring-2 focus:ring-ring text-foreground">
-                    <Menu />
-                </button>
+            <!-- Header -->
+            <header class="h-16 bg-white/80 dark:bg-zinc-900/80 backdrop-blur-xl text-card-foreground shadow-lg border-b border-stone-200/50 dark:border-zinc-700/50 flex items-center justify-between px-6 z-10 shrink-0">
+                <!-- Left side -->
+                <div class="flex items-center gap-4">
+                    <button @click="toggleSidebar" title="Abrir/Fechar Menu"
+                        class="p-2 rounded-lg hover:bg-stone-100 dark:hover:bg-zinc-800 focus:outline-none focus:ring-2 focus:ring-stone-500 text-foreground transition-colors duration-200">
+                        <Menu class="w-5 h-5" />
+                    </button>
 
-                <div v-if="props.breadcrumbs.length > 0"
-                    class="hidden lg:flex items-center space-x-1 text-sm text-muted-foreground">
-                    <template v-for="(crumb, index) in props.breadcrumbs" :key="index">
-                        <Link v-if="index < props.breadcrumbs.length - 1 && crumb.href" :href="crumb.href"
-                            class="hover:text-foreground transition-colors">
-                        {{ crumb.title }}
-                        </Link>
-                        <span v-else class="text-foreground font-semibold">{{ crumb.title }}</span>
+                    <!-- Breadcrumbs -->
+                    <div v-if="props.breadcrumbs.length > 0"
+                        class="hidden lg:flex items-center space-x-2 text-sm">
+                        <template v-for="(crumb, index) in props.breadcrumbs" :key="index">
+                            <Link v-if="index < props.breadcrumbs.length - 1 && crumb.href" :href="crumb.href"
+                                class="text-stone-500 hover:text-stone-600 dark:text-stone-400 dark:hover:text-stone-300 transition-colors duration-200 font-medium">
+                            {{ crumb.title }}
+                            </Link>
+                            <span v-else class="text-stone-900 dark:text-stone-100 font-semibold">{{ crumb.title }}</span>
 
-                        <span v-if="index < props.breadcrumbs.length - 1" class="mx-1">/</span>
-                    </template>
+                            <span v-if="index < props.breadcrumbs.length - 1" class="text-stone-300 dark:text-stone-600">/</span>
+                        </template>
+                    </div>
+                    <div v-else class="hidden lg:flex items-center text-sm">
+                        <Link :href="route('dashboard')" class="text-stone-900 dark:text-stone-100 font-semibold">Página Inicial</Link>
+                    </div>
                 </div>
-                <div v-else class="hidden lg:flex items-center text-sm">
-                    <Link :href="route('dashboard')" class="text-foreground font-semibold">Página Inicial</Link>
-                </div>
 
-                <div class="flex items-center space-x-4">
-                    <!-- Sistema de Notificações Avançado -->
-                    <NotificationDropdown />
+                <!-- Right side -->
+                <div class="flex items-center space-x-3">
+                    <!-- Notifications -->
+                    <div class="relative">
+                        <NotificationDropdown />
+                    </div>
 
-                    <!-- Botão do Tema -->
+                    <!-- Theme Switcher -->
                     <div ref="themeSwitcherRef" class="relative">
                         <button @click="toggleDropdown" title="Alterar Tema"
-                            class="p-2 rounded-md hover:bg-muted focus:outline-none focus:ring-2 focus:ring-ring text-foreground">
-                            <Palette />
+                            class="p-2 rounded-lg hover:bg-stone-100 dark:hover:bg-zinc-800 focus:outline-none focus:ring-2 focus:ring-stone-500 text-foreground transition-all duration-200">
+                            <Palette class="w-5 h-5" />
                         </button>
                         <div v-if="isDropdownOpen"
-                            class="absolute right-0 mt-2 w-48 bg-card rounded-md shadow-lg py-1 z-50 border border-border">
+                            class="absolute right-0 mt-2 w-48 bg-white dark:bg-zinc-800 rounded-xl shadow-2xl py-2 z-50 border border-stone-200 dark:border-zinc-700 backdrop-blur-xl">
                             <a @click.prevent="selectThemeChoice('light')" href="#"
-                                :class="['flex items-center px-4 py-2 text-sm text-foreground hover:bg-muted', { 'bg-muted': themeChoice === 'light' }]">
-                                <Sun class="w-5 h-5 mr-2" />Claro
+                                :class="[
+                                    'flex items-center px-4 py-3 text-sm text-foreground hover:bg-stone-50 dark:hover:bg-zinc-700/50 transition-colors duration-200',
+                                    { 'bg-stone-50 dark:bg-zinc-900/20 text-stone-600 dark:text-stone-400': themeChoice === 'light' }
+                                ]">
+                                <Sun class="w-5 h-5 mr-3" />
+                                <span class="font-medium">Claro</span>
                             </a>
                             <a @click.prevent="selectThemeChoice('dark')" href="#"
-                                :class="['flex items-center px-4 py-2 text-sm text-foreground hover:bg-muted', { 'bg-muted': themeChoice === 'dark' }]">
-                                <MoonIcon class="w-5 h-5 mr-2" />Escuro
+                                :class="[
+                                    'flex items-center px-4 py-3 text-sm text-foreground hover:bg-stone-50 dark:hover:bg-zinc-700/50 transition-colors duration-200',
+                                    { 'bg-stone-50 dark:bg-zinc-900/20 text-stone-600 dark:text-stone-400': themeChoice === 'dark' }
+                                ]">
+                                <MoonIcon class="w-5 h-5 mr-3" />
+                                <span class="font-medium">Escuro</span>
                             </a>
                             <a @click.prevent="selectThemeChoice('system')" href="#"
-                                :class="['flex items-center px-4 py-2 text-sm text-foreground hover:bg-muted', { 'bg-muted': themeChoice === 'system' }]">
-                                <SunMoon class="w-5 h-5 mr-2" /><span>Sistema</span>
+                                :class="[
+                                    'flex items-center px-4 py-3 text-sm text-foreground hover:bg-stone-50 dark:hover:bg-zinc-700/50 transition-colors duration-200',
+                                    { 'bg-stone-50 dark:bg-zinc-900/20 text-stone-600 dark:text-stone-400': themeChoice === 'system' }
+                                ]">
+                                <SunMoon class="w-5 h-5 mr-3" />
+                                <span class="font-medium">Sistema</span>
                             </a>
                         </div>
                     </div>
 
+                    <!-- User Menu -->
                     <div ref="userDropdownRef" class="relative">
                         <button @click="toggleUserDropdown" title="Menu do Usuário"
-                            class="flex items-center justify-center w-10 h-10 p-1 rounded-full focus:outline-none focus:ring-2 focus:ring-ring text-foreground hover:bg-muted">
-                            <CircleUserRoundIcon />
+                            class="flex items-center justify-center w-10 h-10 rounded-lg hover:bg-stone-100 dark:hover:bg-zinc-800 focus:outline-none focus:ring-2 focus:ring-stone-500 text-foreground transition-all duration-200">
+                            <CircleUserRoundIcon class="w-6 h-6" />
                         </button>
                         <div v-if="userDropdownOpen"
-                            class="absolute right-0 mt-2 w-max min-w-[12rem] bg-card border border-border rounded-md shadow-lg py-1 z-50">
-                            <div
-                                class="px-4 py-3 text-sm text-muted-foreground border-b border-border truncate w-full min-w-0">
+                            class="absolute right-0 mt-2 w-56 bg-white dark:bg-zinc-800 border border-stone-200 dark:border-zinc-700 rounded-xl shadow-2xl py-2 z-50 backdrop-blur-xl">
+                            <div class="px-4 py-3 text-sm text-stone-600 dark:text-stone-400 border-b border-stone-100 dark:border-zinc-700 truncate">
                                 {{ (page.props.auth as any)?.user?.email }}
                             </div>
                             <a href="https://glpi.lagoasanta.mg.gov.br"
-                                class="block w-full text-left px-4 py-2 text-sm text-foreground hover:bg-muted"
+                                class="flex items-center w-full px-4 py-3 text-sm text-foreground hover:bg-stone-50 dark:hover:bg-zinc-700/50 transition-colors duration-200"
                                 @click="closeUserDropdown" target="_blank">
-                                <div class="flex items-center space-x-2">
-                                    <Headset />
-                                    <span>Suporte</span>
-                                </div>
+                                <Headset class="w-5 h-5 mr-3 text-stone-500" />
+                                <span class="font-medium">Suporte</span>
                             </a>
                             <form @submit.prevent="logout">
                                 <button type="submit"
-                                    class="block w-full text-left px-4 py-2 text-sm text-foreground hover:bg-muted">
-                                    <div class="flex items-center space-x-2">
-                                        <LogOut />
-                                        <span>Sair</span>
-                                    </div>
+                                    class="flex items-center w-full px-4 py-3 text-sm text-foreground hover:bg-stone-50 dark:hover:bg-zinc-700/50 transition-colors duration-200">
+                                    <LogOut class="w-5 h-5 mr-3 text-red-500" />
+                                    <span class="font-medium">Sair</span>
                                 </button>
                             </form>
                         </div>
@@ -363,18 +421,98 @@ onBeforeUnmount(() => {
                 </div>
             </header>
 
-            <main class="flex-1 p-6 overflow-y-auto bg-background dark:bg-neutral-800">
-                <!--div v-if="successMessage"
-                    class="w-fit max-w-lg mx-auto mb-4 rounded-full bg-green-100 px-6 py-2 text-sm font-medium text-green-800 shadow-lg">
-                    {{ successMessage }}
+            <!-- Main Content Area -->
+            <main class="flex-1 overflow-y-auto bg-gradient-to-br from-stone-50 via-zinc-50/30 to-slate-100/30 dark:from-zinc-900 dark:via-stone-900/70 dark:to-slate-950/30">
+                <div class="min-h-full flex flex-col">
+                    <div class="flex-1">
+                        <slot />
+                    </div>
+                    
+                    <!-- Rodapé -->
+                    <footer class="mt-auto py-6 px-4 sm:px-6 lg:px-8 border-t border-gray-200 dark:border-zinc-700 bg-white/50 dark:bg-zinc-900/50 backdrop-blur-sm">
+                        <div class="container mx-auto text-center">
+                            <p class="text-sm text-gray-600 dark:text-gray-400 font-medium">
+                                Copyright © 2025 Prefeitura Municipal de Lagoa Santa
+                            </p>
+                            <p class="text-xs text-gray-500 dark:text-gray-500 mt-1">
+                                Projetado pela Diretoria de Inovação Tecnológica
+                            </p>
+                        </div>
+                    </footer>
                 </div>
-                <div v-if="errorMessage"
-                    class="w-fit max-w-lg mx-auto mb-4 rounded-full bg-red-100 px-6 py-2 text-sm font-medium text-red-800 shadow-lg">
-                    {{ errorMessage }}
-                </div-->
-
-                <slot />
             </main>
         </div>
     </div>
 </template>
+
+<style scoped>
+/* Animações e efeitos modernos */
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes float {
+    0%, 100% { 
+        transform: translateY(0px); 
+    }
+    50% { 
+        transform: translateY(-2px); 
+    }
+}
+
+/* Efeitos de hover suaves */
+.group:hover {
+    animation: float 2s ease-in-out infinite;
+}
+
+/* Glassmorphism effect */
+.backdrop-blur-xl {
+    backdrop-filter: blur(16px);
+}
+
+/* Smooth transitions para os dropdowns */
+.dropdown-enter-active,
+.dropdown-leave-active {
+    transition: all 0.3s ease;
+}
+
+.dropdown-enter-from,
+.dropdown-leave-to {
+    opacity: 0;
+    transform: translateY(-10px);
+}
+
+/* Scrollbar personalizada */
+.overflow-y-auto::-webkit-scrollbar {
+    width: 6px;
+}
+
+.overflow-y-auto::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.overflow-y-auto::-webkit-scrollbar-thumb {
+    background: rgba(156, 163, 175, 0.3);
+    border-radius: 3px;
+}
+
+.overflow-y-auto::-webkit-scrollbar-thumb:hover {
+    background: rgba(156, 163, 175, 0.5);
+}
+
+/* Dark mode scrollbar */
+.dark .overflow-y-auto::-webkit-scrollbar-thumb {
+    background: rgba(75, 85, 99, 0.3);
+}
+
+.dark .overflow-y-auto::-webkit-scrollbar-thumb:hover {
+    background: rgba(75, 85, 99, 0.5);
+}
+</style>

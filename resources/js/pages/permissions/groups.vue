@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import DashboardLayout from '@/layouts/DashboardLayout.vue'; // Ajuste o caminho se necessário
 import { Head, Link, router } from '@inertiajs/vue3'; // Adicionado Link para possíveis botões
-import { ref } from 'vue'; // Importar ref para dados reativos
+import { ref, watch } from 'vue'; // Importar ref para dados reativos
 import { Button } from '@/components/ui/button'; // Supondo que você tenha este componente
 import { ListPlus, SquarePen, Trash } from 'lucide-vue-next';
 import { BreadcrumbItem } from '@/types';
+import Pagination from '@/components/ui/Pagination.vue';
 
 interface Group {
     id: number;
@@ -22,19 +23,60 @@ interface PaginatedGroups {
         label: string;
         active: boolean;
     }>;
-    // Você pode adicionar outras propriedades de paginação se precisar, ex: total, current_page
+    current_page: number;
+    last_page: number;
+    per_page: number;
+    total: number;
+    from: number;
+    to: number;
 };
 
 interface Props {
     groups: PaginatedGroups;
-    filters?: Record<string, string>; // Um objeto para os filtros (opcional por enquanto)
+    filters?: Record<string, string | number>; // Um objeto para os filtros (opcional por enquanto)
 };
 
 const props = defineProps<Props>();
 
+const form = ref({
+  per_page: props.filters?.per_page || 25,
+});
+
+const applyFilters = () => {
+  const cleanForm = Object.fromEntries(
+    Object.entries(form.value).filter(([, value]) => value !== '' && value !== null)
+  );
+
+  router.get(route('groups.index'), cleanForm, {
+    preserveState: true,
+    preserveScroll: true,
+  });
+};
+
+const handlePerPageChange = (perPage: number) => {
+  // Atualiza diretamente
+  const newFilters = {
+    ...form.value,
+    per_page: perPage
+  };
+  
+  // Remove valores vazios
+  const cleanForm = Object.fromEntries(
+    Object.entries(newFilters).filter(([, value]) => value !== '' && value !== null && value !== 0)
+  );
+  
+  router.get(route('groups.index'), cleanForm, {
+    preserveState: true,
+    preserveScroll: true,
+    onSuccess: () => {
+      form.value.per_page = perPage;
+    }
+  });
+};
+
 const breadcrumbs: BreadcrumbItem[] = [
-    { title: 'Pagina Inicial', href: route('dashboard') },
-    { title: 'Permissões' },
+    { title: 'Página Inicial', href: route('dashboard') },
+    { title: 'Permissões', href: route('groups.index') },
     { title: 'Grupos', href: route('groups.index') }
 ];
 
@@ -71,18 +113,14 @@ const confirmDelete = (groupId: number) => {
 
             <div class="overflow-x-auto bg-gray-900 rounded-lg shadow-md hidden md:block">
                 <table class="min-w-full text-white">
-                    <thead class="bg-gray-500 dark:bg-zinc-700">
-                        <tr class="border-b border-gray-700">
-                            <th scope="col"
-                                class="px-6 py-4 text-left text-xs font-semibold text-white dark:text-gray-300 uppercase tracking-wider">
-                                GRUPO</th>
-                            <th scope="col"
-                                class="px-6 py-4 text-left text-xs font-semibold text-white dark:text-gray-300 uppercase tracking-wider">
-                                DESCRIÇÃO</th>
-                            <th scope="col" class="relative px-6 py-4 text-xs font-semibold text-white dark:text-gray-300 uppercase tracking-wider text-center">AÇÕES</th>
+                                        <thead class="bg-stone-800 dark:bg-stone-800/80">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-white-300 dark:text-gray-200 uppercase tracking-wider">Nome</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-white-300 dark:text-gray-200 uppercase tracking-wider">Descrição</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-white-300 dark:text-gray-200 uppercase tracking-wider">Ações</th>
                         </tr>
                     </thead>
-                    <tbody class="bg-gray-50 dark:bg-stone-950 divide-y divide-gray-700">
+                    <tbody class="bg-gray-50 dark:bg-stone-950/95 divide-y divide-gray-700 dark:divide-stone-700">
                         <tr v-if="props.groups.data.length === 0">
                             <td colspan="3" class="px-6 py-12 text-center text-sm text-gray-800">
                                 Nenhum grupo encontrado.
@@ -129,7 +167,7 @@ const confirmDelete = (groupId: number) => {
                             </div>
                             <div class="flex items-center space-x-2 ml-2">
                                 <a :href="route('groups.edit', g.id)" 
-                                    class="text-green-600 dark:text-green-400 hover:text-green-300 p-2 rounded-md hover:bg-green-50 dark:hover:bg-green-900/20" 
+                                    class="text-blue-600 dark:text-blue-400 hover:text-blue-500 dark:hover:text-blue-300 p-2 rounded-md hover:bg-blue-50 dark:hover:bg-blue-900/20" 
                                     title="Editar">
                                     <SquarePen class="h-5 w-5" />
                                 </a>
@@ -149,19 +187,12 @@ const confirmDelete = (groupId: number) => {
                 </div>
             </div>
 
-            <div v-if="props.groups.links.length > 3" class="mt-6 flex justify-center">
-                <div class="flex flex-wrap -mb-1">
-                    <template v-for="(link, key) in props.groups.links" :key="key">
-                        <div v-if="link.url === null"
-                            class="mr-1 mb-1 px-4 py-3 text-sm leading-4 text-muted-foreground border rounded"
-                            v-html="link.label" />
-                        <Link v-else
-                            class="mr-1 mb-1 px-4 py-3 text-sm leading-4 border rounded hover:bg-muted focus:border-primary focus:text-primary transition-colors"
-                            :class="{ 'bg-primary text-primary-foreground hover:bg-primary/90': link.active }"
-                            :href="link.url" v-html="link.label" />
-                    </template>
-                </div>
-            </div>
+            <!-- Paginação -->
+            <Pagination 
+                :pagination-data="props.groups"
+                :current-per-page="Number(form.per_page)"
+                @update:per-page="handlePerPageChange"
+            />
         </div>
     </DashboardLayout>
 </template>

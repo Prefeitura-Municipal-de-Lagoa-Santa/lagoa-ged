@@ -17,14 +17,18 @@ class UserController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index()
+    public function index(Request $request)
     {
+        $perPage = $request->input('per_page', 25);
         $users = User::query()
             ->orderBy('created_at', 'desc')
-            ->paginate(15);
+            ->paginate($perPage);
+        
+        $filters = $request->only(['per_page']);
+        
         return Inertia::render('permissions/users', [
             'users' => $users,
-            'filters' => [],
+            'filters' => $filters,
         ]);
     }
 

@@ -1,68 +1,80 @@
 <template>
-  <div class="fixed inset-0 z-[99999] flex items-center justify-center">
-    <div class="bg-white dark:bg-zinc-900 rounded-lg p-6 max-w-4xl w-full mx-4 max-h-[80vh] overflow-y-auto">
-      
-      <!-- Filtros -->
-      <div class="flex items-center space-x-4 mb-4 p-3 bg-gray-50 dark:bg-zinc-700 rounded">
-        <select
-          v-model="selectedCategory"
-          @change="fetchNotifications"
-          class="text-sm border border-gray-300 dark:border-gray-600 dark:bg-zinc-700 dark:text-white rounded-md px-3 py-1"
-        >
-          <option value="">Todas as categorias</option>
-          <option value="job">Jobs</option>
-          <option value="system">Sistema</option>
-          <option value="user_action">Ações do usuário</option>
-          <option value="import">Importações</option>
-        </select>
+  <!-- Modal Backdrop -->
+  <div class="fixed inset-0 z-[99999] overflow-y-auto" style="z-index: 99999 !important;">
+    <!-- Backdrop overlay -->
+    <div class="fixed inset-0 bg-black opacity-20 transition-opacity" @click="$emit('close')"></div>
+    
+    <!-- Modal container -->
+    <div class="flex min-h-full items-center justify-center p-4 relative z-[99999]">
+      <!-- Modal content -->
+      <div class="relative bg-white dark:bg-zinc-900 rounded-xl shadow-2xl max-w-4xl w-full max-h-[85vh] overflow-hidden border border-gray-200 dark:border-zinc-700">
         
-        <select
-          v-model="selectedStatus"
-          @change="fetchNotifications"
-          class="text-sm border border-gray-300 dark:border-zinc-600 dark:bg-zinc-700 dark:text-white rounded-md px-3 py-1"
-        >
-          <option value="">Todas</option>
-          <option value="unread">Não lidas</option>
-          <option value="read">Lidas</option>
-        </select>
-        
-        <button
-          @click="fetchNotifications"
-          class="px-3 py-1 bg-blue-600 text-white rounded text-sm hover:bg-blue-700"
-        >
-          Atualizar
-        </button>
-      </div>
-      
-      <!-- Header -->
-      <div class="flex items-center justify-between mb-6 border-b border-gray-200 dark:border-zinc-700 pb-4">
-        <h3 class="text-xl font-semibold text-gray-900 dark:text-white">
-          Central de Notificações
-        </h3>
-        <button
-          @click="$emit('close')"
-          class="text-gray-400 hover:text-gray-600 dark:text-gray-300 dark:hover:text-gray-100 text-2xl font-bold"
-        >
-          ×
-        </button>
-      </div>
-
-      <!-- Content -->
-      <div class="space-y-4">
-        <!-- Loading state -->
-        <div v-if="loading" class="text-center py-8">
-          <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
-          <p class="text-gray-600 dark:text-gray-400">Carregando...</p>
-        </div>
-        
-        <!-- Notifications list -->
-        <div v-else-if="notifications.length > 0" class="space-y-3">
-          <div
-            v-for="notification in notifications"
-            :key="notification.id"
-            class="p-4 border border-gray-200 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-zinc-700 hover:bg-gray-100 dark:hover:bg-zinc-600 transition-colors"
-            :class="{ 'border-blue-300 dark:border-blue-500 bg-blue-50 dark:bg-blue-900/20': !notification.is_read }"
+        <!-- Header fixo -->
+        <div class="flex items-center justify-between p-6 border-b border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-900">
+          <h3 class="text-xl font-semibold text-gray-900 dark:text-white">
+            Central de Notificações
+          </h3>
+          <button
+            @click="$emit('close')"
+            class="text-gray-400 hover:text-gray-600 dark:text-gray-300 dark:hover:text-gray-100 p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-zinc-800 transition-colors"
           >
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+            </svg>
+          </button>
+        </div>
+
+        <!-- Filtros fixos -->
+        <div class="p-4 bg-gray-50 dark:bg-zinc-800 border-b border-gray-200 dark:border-zinc-700">
+          <div class="flex items-center space-x-4">
+            <select
+              v-model="selectedCategory"
+              @change="fetchNotifications"
+              class="text-sm border border-gray-300 dark:border-gray-600 dark:bg-zinc-700 dark:text-white rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            >
+              <option value="">Todas as categorias</option>
+              <option value="job">Jobs</option>
+              <option value="system">Sistema</option>
+              <option value="user_action">Ações do usuário</option>
+              <option value="import">Importações</option>
+            </select>
+            
+            <select
+              v-model="selectedStatus"
+              @change="fetchNotifications"
+              class="text-sm border border-gray-300 dark:border-zinc-600 dark:bg-zinc-700 dark:text-white rounded-md px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            >
+              <option value="">Todas</option>
+              <option value="unread">Não lidas</option>
+              <option value="read">Lidas</option>
+            </select>
+            
+            <button
+              @click="fetchNotifications"
+              class="px-4 py-2 bg-blue-600 text-white rounded-md text-sm hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors"
+            >
+              Atualizar
+            </button>
+          </div>
+        </div>
+
+        <!-- Content scrollável -->
+        <!-- Content scrollável -->
+        <div class="p-6 overflow-y-auto max-h-[calc(85vh-200px)]">
+          <!-- Loading state -->
+          <div v-if="loading" class="text-center py-8">
+            <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+            <p class="text-gray-600 dark:text-gray-400">Carregando notificações...</p>
+          </div>
+          
+          <!-- Notifications list -->
+          <div v-else-if="notifications.length > 0" class="space-y-4">
+            <div
+              v-for="notification in notifications"
+              :key="notification.id"
+              class="p-4 border border-gray-200 dark:border-gray-600 rounded-xl bg-white dark:bg-zinc-800 hover:bg-gray-50 dark:hover:bg-zinc-700 transition-all duration-200 shadow-sm"
+              :class="{ 'ring-2 ring-blue-300 dark:ring-blue-500 bg-blue-50 dark:bg-blue-900/20': !notification.is_read }"
+            >
             <div class="flex items-start justify-between">
               <div class="flex items-start space-x-3">
                 <!-- Icon by type -->
@@ -123,11 +135,12 @@
           </div>
         </div>
         
-        <!-- Empty state -->
-        <div v-else class="text-center py-12 text-gray-500 dark:text-gray-400">
-          <Bell class="w-16 h-16 mx-auto mb-4 opacity-50" />
-          <p class="text-lg font-medium">Nenhuma notificação encontrada</p>
-          <p class="text-sm">Tente novamente em alguns instantes.</p>
+          <!-- Empty state -->
+          <div v-else class="text-center py-12 text-gray-500 dark:text-gray-400">
+            <Bell class="w-16 h-16 mx-auto mb-4 opacity-50" />
+            <p class="text-lg font-medium">Nenhuma notificação encontrada</p>
+            <p class="text-sm">Tente ajustar os filtros ou aguarde novas notificações.</p>
+          </div>
         </div>
       </div>
     </div>
@@ -135,7 +148,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onBeforeUnmount } from 'vue'
 import { Eye, Trash2, Bell, CheckCircle, XCircle, AlertTriangle, Info, FileText, EyeOff } from 'lucide-vue-next'
 import axios from 'axios'
 
@@ -253,9 +266,21 @@ const getNotificationIconClass = (type: string) => {
   }
 }
 
+// Handle ESC key
+const handleKeyDown = (event: KeyboardEvent) => {
+  if (event.key === 'Escape') {
+    emit('close')
+  }
+}
+
 // Lifecycle
 onMounted(async () => {
   console.log('NotificationCenter mounted') // Debug
+  document.addEventListener('keydown', handleKeyDown)
   await fetchNotifications()
+})
+
+onBeforeUnmount(() => {
+  document.removeEventListener('keydown', handleKeyDown)
 })
 </script>

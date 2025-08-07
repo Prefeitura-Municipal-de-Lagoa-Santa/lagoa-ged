@@ -70,24 +70,31 @@ function submitUserForm() {
     <Head :title="`Editar Usuário: ${props.user.full_name}`" />
 
     <DashboardLayout :breadcrumbs="breadcrumbs">
-        <div class="container mx-auto py-6 px-4 sm:px-6 lg:px-8">
-            <div class="flex flex-col sm:flex-row justify-between items-center mb-6 gap-4">
-                <h1 class="text-2xl md:text-3xl font-semibold text-foreground">
+        <div class="container mx-auto py-8 px-4">
+            <div class="mb-8">
+                <h1 class="text-3xl font-bold text-gray-900 dark:text-stone-50 mb-2">
                     Editar Usuário: {{ props.user.full_name }}
                 </h1>
+                <p class="text-gray-600 dark:text-gray-400 text-lg">
+                    Gerencie os dados e grupos de permissão do usuário abaixo.
+                </p>
             </div>
 
-            <CardHeader>
-                <CardTitle>Detalhes do Usuário</CardTitle>
-            </CardHeader>
-            
-            <UserForm 
-                :form="form" 
-                :user="props.user" 
-                :all-groups="props.allGroups" 
-                :is-editing="true" 
-                @submit="submitUserForm" 
-            />
+            <div class="bg-white dark:bg-stone-950/95 rounded-2xl shadow-xl p-8 border border-gray-200 dark:border-stone-800 max-w-2xl mx-auto">
+                <div class="mb-6 border-b border-gray-200 dark:border-stone-800 pb-4">
+                    <h2 class="text-2xl font-semibold text-gray-800 dark:text-stone-50 flex items-center gap-2">
+                        <span class="inline-block w-2 h-8 bg-blue-600 rounded-full mr-2"></span>
+                        Detalhes do Usuário
+                    </h2>
+                </div>
+                <UserForm 
+                    :form="form" 
+                    :user="props.user" 
+                    :all-groups="props.allGroups" 
+                    :is-editing="true" 
+                    @submit="submitUserForm" 
+                />
+            </div>
         </div>
     </DashboardLayout>
 </template>

@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import GroupManagerModal from '@/components/modals/GroupManagerModal.vue';
 import { Users, Filter, X, CheckCircle, ChevronDown, ChevronUp } from 'lucide-vue-next';
 import axios from 'axios';
+import Pagination from '@/components/ui/Pagination.vue';
 
 
 interface Document {
@@ -20,6 +21,12 @@ interface PaginatedDocuments {
     label: string;
     active: boolean;
   }>;
+  current_page: number;
+  last_page: number;
+  per_page: number;
+  total: number;
+  from: number;
+  to: number;
 }
 interface Props {
   documents: PaginatedDocuments;
@@ -29,7 +36,27 @@ interface Props {
 }
 const props = defineProps<Props>();
 
-const selectedDocuments = ref<string[]>([]);
+// Função para carregar seleção do sessionStorage
+const loadSelectionFromStorage = (): string[] => {
+  try {
+    const stored = sessionStorage.getItem('batch-permissions-selected-documents');
+    return stored ? JSON.parse(stored) : [];
+  } catch {
+    return [];
+  }
+};
+
+// Função para salvar seleção no sessionStorage
+const saveSelectionToStorage = (selection: string[]) => {
+  try {
+    sessionStorage.setItem('batch-permissions-selected-documents', JSON.stringify(selection));
+  } catch {
+    // Ignorar erros de sessionStorage
+  }
+};
+
+// Carregar seleção inicial do sessionStorage
+const selectedDocuments = ref<string[]>(loadSelectionFromStorage());
 const selectedReadGroups = ref<string[]>([]);
 const selectedWriteGroups = ref<string[]>([]);
 const showReadGroupModal = ref(false);
@@ -40,21 +67,53 @@ const showDetailedChanges = ref(false);
 const jobNotification = ref<any>(null);
 const showNotification = ref(false);
 
-const allSelected = computed(() => selectedDocuments.value.length === props.documents.data.length);
+// Observar mudanças na seleção e salvar no sessionStorage
+watch(selectedDocuments, (newSelection) => {
+  saveSelectionToStorage(newSelection);
+}, { deep: true });
+
+const allSelected = computed(() => {
+  const currentPageIds = props.documents.data.map(d => d.id);
+  return currentPageIds.every(id => selectedDocuments.value.includes(id));
+});
+
+const partiallySelected = computed(() => {
+  const currentPageIds = props.documents.data.map(d => d.id);
+  const selectedFromCurrentPage = currentPageIds.filter(id => selectedDocuments.value.includes(id));
+  return selectedFromCurrentPage.length > 0 && selectedFromCurrentPage.length < currentPageIds.length;
+});
 
 function toggleAll() {
+  const currentPageIds = props.documents.data.map(d => d.id);
+  
   if (allSelected.value) {
-    selectedDocuments.value = [];
+    // Remover todos os IDs da página atual da seleção
+    selectedDocuments.value = selectedDocuments.value.filter(id => !currentPageIds.includes(id));
   } else {
-    selectedDocuments.value = props.documents.data.map(d => d.id);
+    // Adicionar todos os IDs da página atual à seleção (evitando duplicatas)
+    const newSelection = [...selectedDocuments.value];
+    currentPageIds.forEach(id => {
+      if (!newSelection.includes(id)) {
+        newSelection.push(id);
+      }
+    });
+    selectedDocuments.value = newSelection;
   }
 }
+
+// Função para limpar toda a seleção
+function clearSelection() {
+  selectedDocuments.value = [];
+  saveSelectionToStorage([]);
+}
+
 // Filtros
 const form = ref({
   title: props.filters?.title || '',
   tags: props.filters?.tags || '',
   document_year: props.filters?.document_year || '',
   other_metadata: props.filters?.other_metadata || '',
+  per_page: props.filters?.per_page || 25,
 });
 
 const areFiltersActive = () => {
@@ -67,6 +126,7 @@ const applyFilters = () => {
   const cleanForm = Object.fromEntries(
     Object.entries(form.value).filter(([, value]) => value !== '' && value !== null)
   );
+  
   router.get(route('documents.batch-permissions'), cleanForm, {
     preserveState: true,
     preserveScroll: true,
@@ -74,7 +134,7 @@ const applyFilters = () => {
 };
 
 let debounceTimeout: ReturnType<typeof setTimeout> | null = null;
-watch(form, (newForm) => {
+watch(form, (newForm, oldForm) => {
   if (debounceTimeout) {
     clearTimeout(debounceTimeout);
   }
@@ -82,6 +142,27 @@ watch(form, (newForm) => {
     applyFilters();
   }, 300);
 }, { deep: true });
+
+const handlePerPageChange = (perPage: number) => {
+  // Atualiza diretamente sem esperar o watcher
+  const newFilters = {
+    ...form.value,
+    per_page: perPage
+  };
+  
+  // Remove valores vazios
+  const cleanForm = Object.fromEntries(
+    Object.entries(newFilters).filter(([, value]) => value !== '' && value !== null && value !== 0)
+  );
+  
+  router.get(route('documents.batch-permissions'), cleanForm, {
+    preserveState: true,
+    preserveScroll: true,
+    onSuccess: () => {
+      form.value.per_page = perPage;
+    }
+  });
+};
 
 function submitBatch() {
   // Primeiro, mostra o preview
@@ -101,6 +182,9 @@ function applyChanges() {
       selectedWriteGroups.value = [];
       showPreview.value = false;
       showDetailedChanges.value = false;
+      
+      // Limpar também o sessionStorage
+      saveSelectionToStorage([]);
       
       // Iniciar polling para verificar notificações do job
       startNotificationPolling();
@@ -274,7 +358,7 @@ onUnmounted(() => {
           </div>
         </div>
         <div class="mt-4 flex justify-end">
-          <Button @click="form = { title: '', tags: '', document_year: '', other_metadata: '' }; applyFilters();" variant="outline" class="flex items-center gap-2">
+          <Button @click="form = { title: '', tags: '', document_year: '', other_metadata: '', per_page: 25 }; applyFilters();" variant="outline" class="flex items-center gap-2">
             <X class="h-4 w-4" />
             Limpar Filtros
           </Button>
@@ -283,10 +367,16 @@ onUnmounted(() => {
 
       <div class="overflow-x-auto bg-gray-900 rounded-lg shadow-md hidden md:block">
         <table class="min-w-full text-white">
-          <thead class="bg-gray-500 dark:bg-zinc-700">
+          <thead class="bg-stone-800 dark:bg-stone-800/80">
             <tr class="border-b border-gray-700">
               <th class="px-6 py-4 text-left text-xs font-semibold text-white dark:text-gray-300 uppercase tracking-wider">
-                <input type="checkbox" :checked="allSelected" @change="toggleAll" class="rounded border-gray-600 bg-gray-700" />
+                <input 
+                  type="checkbox" 
+                  :checked="allSelected" 
+                  :indeterminate="partiallySelected"
+                  @change="toggleAll" 
+                  class="rounded border-gray-600 bg-gray-700" 
+                />
               </th>
               <th class="px-6 py-4 text-left text-xs font-semibold text-white dark:text-gray-300 uppercase tracking-wider">TÍTULO</th>
               <th class="px-6 py-4 text-left text-xs font-semibold text-white dark:text-gray-300 uppercase tracking-wider">TIPO DE DOCUMENTO</th>
@@ -312,7 +402,13 @@ onUnmounted(() => {
       <div class="md:hidden">
         <div class="mb-4 p-3 bg-card rounded-lg border border-border">
           <label class="flex items-center space-x-2 text-sm font-medium text-foreground">
-            <input type="checkbox" :checked="allSelected" @change="toggleAll" class="rounded border-input" />
+            <input 
+              type="checkbox" 
+              :checked="allSelected" 
+              :indeterminate="partiallySelected"
+              @change="toggleAll" 
+              class="rounded border-input" 
+            />
             <span>Selecionar todos os documentos</span>
           </label>
         </div>
@@ -344,27 +440,34 @@ onUnmounted(() => {
         </div>
       </div>
 
-      <div v-if="props.documents.links && props.documents.links.length > 3" class="mt-6 flex justify-center">
-        <div class="flex flex-wrap -mb-1">
-          <template v-for="(link, key) in props.documents.links" :key="key">
-            <div v-if="link.url === null"
-              class="mr-1 mb-1 px-4 py-3 text-sm leading-4 text-muted-foreground border rounded" v-html="link.label" />
-            <Link v-else
-              class="mr-1 mb-1 px-4 py-3 text-sm leading-4 border rounded hover:bg-muted focus:border-primary focus:text-primary transition-colors"
-              :class="{ 'bg-primary text-primary-foreground hover:bg-primary/90': link.active }" :href="link.url"
-              v-html="link.label" />
-          </template>
+      <div class="mt-6 flex items-center justify-between">
+        <div class="text-sm text-muted-foreground">
+          <span v-if="selectedDocuments.length > 0">
+            <span class="font-medium">{{ selectedDocuments.length }} documento(s) selecionado(s)</span>
+            <span v-if="selectedDocuments.length > props.documents.data.length" class="text-blue-600 dark:text-blue-400 ml-2">
+              (incluindo {{ selectedDocuments.length - props.documents.data.filter(d => selectedDocuments.includes(d.id)).length }} de outras páginas)
+            </span>
+          </span>
+          <span v-else>
+            Nenhum documento selecionado
+          </span>
         </div>
+        
+        <button 
+          v-if="selectedDocuments.length > 0"
+          @click="clearSelection"
+          class="text-sm text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 font-medium transition-colors"
+        >
+          Limpar Seleção
+        </button>
       </div>
 
-      <div class="mt-6 text-sm text-muted-foreground">
-        <span v-if="selectedDocuments.length > 0">
-          {{ selectedDocuments.length }} documento(s) selecionado(s)
-        </span>
-        <span v-else>
-          Nenhum documento selecionado
-        </span>
-      </div>
+      <!-- Paginação -->
+      <Pagination 
+        :pagination-data="props.documents"
+        :current-per-page="Number(form.per_page)"
+        @update:per-page="handlePerPageChange"
+      />
 
       <GroupManagerModal
         v-model:modelValue="showReadGroupModal"
@@ -384,7 +487,7 @@ onUnmounted(() => {
 
       <!-- Modal de Preview -->
       <div v-if="showPreview" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-        <div class="bg-white dark:bg-zinc-800 rounded-lg p-6 max-w-5xl max-h-[80vh] overflow-y-auto">
+        <div class="bg-white dark:bg-stone-950/95 rounded-lg p-6 max-w-5xl max-h-[80vh] overflow-y-auto">
           <div class="flex items-center mb-4">
             <h3 class="text-lg font-semibold">Confirmar Alterações em Lote</h3>
             <span class="ml-2 bg-orange-100 text-orange-800 text-xs px-2 py-1 rounded">Revisão Obrigatória</span>
@@ -480,7 +583,7 @@ onUnmounted(() => {
               
               <!-- Lista detalhada quando expandida -->
               <div v-if="showDetailedChanges" class="space-y-3">
-                <div v-for="change in previewData.changes" :key="change.document_id" class="border rounded-lg p-4 bg-white dark:bg-zinc-950 shadow-sm dark:shadow-gray-500">
+                <div v-for="change in previewData.changes" :key="change.document_id" class="border rounded-lg p-4 bg-white dark:bg-stone-950/95 shadow-sm dark:shadow-gray-500">
                   <div class="flex justify-between items-start mb-3">
                     <div>
                       <h5 class="font-medium text-gray-900 dark:text-gray-200">{{ change.document_title }}</h5>
@@ -551,7 +654,7 @@ onUnmounted(() => {
           </div>
           
           <div class="flex justify-end gap-2 mt-6 pt-4 border-t">
-            <Button @click="showPreview = false; showDetailedChanges = false" variant="outline" class="bg-zinc-600 text-white dark:bg-zinc-500">Cancelar</Button>
+            <Button @click="showPreview = false; showDetailedChanges = false" variant="outline" class="bg-blue-600 text-white dark:bg-blue-500">Cancelar</Button>
             <Button 
               v-if="previewData?.changes?.length > 0"
               @click="applyChanges()" 

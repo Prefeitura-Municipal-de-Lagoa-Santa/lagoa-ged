@@ -107,12 +107,14 @@
       </div>
     </div>
 
-    <!-- Modal da Central de Notificações -->
-    <NotificationCenter
-      v-if="showNotificationCenter"
-      @close="showNotificationCenter = false"
-      @notification-updated="refreshNotifications"
-    />
+    <!-- Modal da Central de Notificações - Renderizado no body -->
+    <Teleport to="body">
+      <NotificationCenter
+        v-if="showNotificationCenter"
+        @close="showNotificationCenter = false"
+        @notification-updated="refreshNotifications"
+      />
+    </Teleport>
   </div>
 </template>
 
