@@ -19,13 +19,7 @@ interface Document {
   file_extension: string;
 };
 
-interface User {
-    id: string;
-    full_name: string;
-    username: string;
-    email: string;
-    is_protected: boolean;
-    is_ldap: boolean;
+interface User {    
     is_admin: boolean;
 }
 
@@ -158,6 +152,7 @@ const breadcrumbs: BreadcrumbItem[] = [
           </h1>
           <p class="text-gray-500 dark:text-gray-400 text-base">Gerencie e visualize todos os documentos do sistema.</p>
         </div>
+        
         <div class="flex flex-wrap gap-3">
           <Button @click="showFilters = !showFilters" variant="outline" class="flex items-center gap-2 px-4 py-2 rounded-xl font-semibold transition shadow">
             <Filter class="h-4 w-4" />

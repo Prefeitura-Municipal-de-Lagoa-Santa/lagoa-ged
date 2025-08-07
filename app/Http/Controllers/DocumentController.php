@@ -129,10 +129,12 @@ class DocumentController extends Controller
                     'documents' => (object) ['data' => []],
                     'filters' => $request->only(['title', 'tags', 'document_year', 'other_metadata']),
                     'years' => $this->getAvailableYears(),
+                    'user' => $user,
                 ]);
             }
             $query->whereIn('permissions.read_group_ids', $userGroupObjectIds);
         }
+
 
         // 2. --- Aplicação de Filtros Dinâmicos ---
         $filters = $request->only([
@@ -197,6 +199,7 @@ class DocumentController extends Controller
         $perPage = $request->input('per_page', 25);
         $documents = $query->orderBy('created_at', 'desc')->paginate($perPage)->appends($request->query());
         //dd($documents);
+        
         return Inertia::render('documents/index', [
             'documents' => $documents,
             'filters' => $filters,
@@ -254,7 +257,7 @@ class DocumentController extends Controller
         // Verificar se é um download forçado
         $disposition = $request->has('download') ? 'attachment' : 'inline';
 
-        return response()->stream(function() use ($filePath) {
+        return response()->stream(function () use ($filePath) {
             echo Storage::disk('samba')->get($filePath);
         }, 200, [
             'Content-Type' => $mimeType,
@@ -341,31 +344,31 @@ class DocumentController extends Controller
         if (!$user) {
             abort(401, 'Não autenticado.');
         }
-    
+
         if (!$user->isAdmin()) {
             $userGroupObjectIds = $user->group_ids;
             $uploadersGroup = Group::where('name', 'UPLOADERS')->first();
-        
+
             $canProcessImport = false;
             if ($uploadersGroup) {
                 $canProcessImport = in_array((string) $uploadersGroup->_id, array_map(fn($id) => (string) $id, $userGroupObjectIds));
             }
-        
+
             if (!$canProcessImport) {
                 abort(403, 'Você não tem permissão para processar a importação de documentos.');
             }
         }
-    
+
         $file = $request->file('csv_file');
         $tempPath = $file->store('imports/tmp');
-    
+
         ImportDocumentsJob::dispatch(
             $user,
             $tempPath,
             $request->input('read_group_ids', []),
             $request->input('write_group_ids', [])
         );
-    
+
         // Usar EnhancedNotificationService diretamente
         $notificationService = app(\App\Services\EnhancedNotificationService::class);
         $notificationService->info(
@@ -374,7 +377,7 @@ class DocumentController extends Controller
             'Importação em andamento. Você será notificado ao final.',
             ['job_type' => 'import_documents']
         );
-    
+
         return redirect()->back();
     }
 
@@ -467,7 +470,7 @@ class DocumentController extends Controller
             Log::info('Executando preview das mudanças');
             return $this->previewBatchChanges($documentIds, $readGroupIds, $writeGroupIds);
         }
-        
+
         Log::info('Executando atualização em lote', [
             'document_count' => count($documentIds),
             'read_groups_count' => count($readGroupObjectIds),
@@ -475,7 +478,7 @@ class DocumentController extends Controller
         ]);
         //dd($readGroupObjectIds, $writeGroupObjectIds);
         BatchUpdateDocumentPermissionsJob::dispatch($documentIds, $readGroupObjectIds, $writeGroupObjectIds, (string) $request->user()->id);
-        
+
         // Usar EnhancedNotificationService diretamente
         $notificationService = app(\App\Services\EnhancedNotificationService::class);
         $notificationService->info(
@@ -484,19 +487,19 @@ class DocumentController extends Controller
             'Atualização em lote iniciada!',
             ['job_type' => 'batch_permissions', 'document_count' => count($documentIds)]
         );
-        
+
         return redirect()->route('documents.index');
     }
-    
+
     private function previewBatchChanges($documentIds, $readGroupIds, $writeGroupIds)
     {
         $documents = Document::whereIn('_id', $documentIds)->get(['_id', 'title', 'permissions', 'metadata']);
         $allGroupIds = array_merge($readGroupIds, $writeGroupIds);
         $groups = Group::whereIn('_id', $allGroupIds)->get(['_id', 'name']);
-        
+
         // Criar mapa de grupos para facilitar lookup
         $groupMap = $groups->keyBy('_id')->map(fn($group) => $group->name);
-        
+
         $changes = [];
         $summary = [
             'total_documents' => count($documents),
@@ -505,35 +508,35 @@ class DocumentController extends Controller
             'total_permissions_added' => 0,
             'total_permissions_removed' => 0,
         ];
-        
+
         foreach ($documents as $document) {
             $currentReadGroups = $document->permissions['read_group_ids'] ?? [];
             $currentWriteGroups = $document->permissions['write_group_ids'] ?? [];
-            
+
             // Converter ObjectIds atuais para strings para comparação
             $currentReadGroupStrings = array_map(fn($id) => (string) $id, $currentReadGroups);
             $currentWriteGroupStrings = array_map(fn($id) => (string) $id, $currentWriteGroups);
-            
+
             // Calcular diferenças
             $readGroupsToAdd = array_diff($readGroupIds, $currentReadGroupStrings);
             $readGroupsToRemove = array_diff($currentReadGroupStrings, $readGroupIds);
             $writeGroupsToAdd = array_diff($writeGroupIds, $currentWriteGroupStrings);
             $writeGroupsToRemove = array_diff($currentWriteGroupStrings, $writeGroupIds);
-            
+
             // Obter nomes dos grupos para exibição
             $readGroupNamesToAdd = array_filter(array_map(fn($id) => $groupMap->get($id), $readGroupsToAdd));
             $readGroupNamesToRemove = array_filter(array_map(fn($id) => $groupMap->get($id), $readGroupsToRemove));
             $writeGroupNamesToAdd = array_filter(array_map(fn($id) => $groupMap->get($id), $writeGroupsToAdd));
             $writeGroupNamesToRemove = array_filter(array_map(fn($id) => $groupMap->get($id), $writeGroupsToRemove));
-            
-            $hasChanges = !empty($readGroupsToAdd) || !empty($readGroupsToRemove) || 
-                         !empty($writeGroupsToAdd) || !empty($writeGroupsToRemove);
-            
+
+            $hasChanges = !empty($readGroupsToAdd) || !empty($readGroupsToRemove) ||
+                !empty($writeGroupsToAdd) || !empty($writeGroupsToRemove);
+
             if ($hasChanges) {
                 $summary['documents_with_changes']++;
                 $summary['total_permissions_added'] += count($readGroupsToAdd) + count($writeGroupsToAdd);
                 $summary['total_permissions_removed'] += count($readGroupsToRemove) + count($writeGroupsToRemove);
-                
+
                 $changes[] = [
                     'document_id' => (string) $document->_id,
                     'document_title' => $document->title,
@@ -552,17 +555,17 @@ class DocumentController extends Controller
                         'write_groups_to_add' => $writeGroupNamesToAdd,
                         'write_groups_to_remove' => $writeGroupNamesToRemove,
                     ],
-                    'change_count' => count($readGroupsToAdd) + count($readGroupsToRemove) + 
-                                   count($writeGroupsToAdd) + count($writeGroupsToRemove),
+                    'change_count' => count($readGroupsToAdd) + count($readGroupsToRemove) +
+                        count($writeGroupsToAdd) + count($writeGroupsToRemove),
                 ];
             } else {
                 $summary['documents_unchanged']++;
             }
         }
-        
+
         // Ordenar documentos por quantidade de mudanças (mais mudanças primeiro)
         usort($changes, fn($a, $b) => $b['change_count'] <=> $a['change_count']);
-        
+
         return response()->json([
             'success' => true,
             'summary' => $summary,
@@ -572,33 +575,37 @@ class DocumentController extends Controller
             'warning_messages' => $this->generateWarningMessages($changes, $summary),
         ]);
     }
-    
+
     private function generateWarningMessages($changes, $summary)
     {
         $warnings = [];
-        
+
         // Avisos sobre remoção de permissões
         if ($summary['total_permissions_removed'] > 0) {
             $warnings[] = "ATENÇÃO: {$summary['total_permissions_removed']} permissões serão REMOVIDAS.";
         }
-        
+
         // Avisos sobre documentos sem permissões
-        $documentsWithoutRead = array_filter($changes, fn($change) => 
+        $documentsWithoutRead = array_filter(
+            $changes,
+            fn($change) =>
             empty($change['new_permissions']['read_groups'])
         );
-        
+
         if (!empty($documentsWithoutRead)) {
             $warnings[] = "CUIDADO: " . count($documentsWithoutRead) . " documento(s) ficarão SEM permissões de leitura.";
         }
-        
-        $documentsWithoutWrite = array_filter($changes, fn($change) => 
+
+        $documentsWithoutWrite = array_filter(
+            $changes,
+            fn($change) =>
             empty($change['new_permissions']['write_groups'])
         );
-        
+
         if (!empty($documentsWithoutWrite)) {
             $warnings[] = "CUIDADO: " . count($documentsWithoutWrite) . " documento(s) ficarão SEM permissões de escrita.";
         }
-        
+
         return $warnings;
     }
 
@@ -612,13 +619,13 @@ class DocumentController extends Controller
 
         // Usar o novo serviço de notificações
         $notificationService = app(\App\Services\EnhancedNotificationService::class);
-        
+
         // Buscar últimas 5 notificações não lidas para o popup
         $recentNotifications = $notificationService->getForUser($user->id, true, null, null, 5);
         $unreadCount = $notificationService->getUnreadCount($user->id);
 
         // Converter para formato compatível com frontend
-        $formattedNotifications = $recentNotifications->map(function($notification) {
+        $formattedNotifications = $recentNotifications->map(function ($notification) {
             return [
                 'id' => (string) $notification->_id,
                 'title' => $notification->title,
@@ -633,7 +640,7 @@ class DocumentController extends Controller
         });
 
         return response()->json([
-            'success' => true, 
+            'success' => true,
             'notifications' => $formattedNotifications,
             'unread_count' => $unreadCount,
             // Para compatibilidade com código antigo - usar apenas se não há notificações do novo sistema
@@ -642,6 +649,6 @@ class DocumentController extends Controller
     }
 
 
-    
+
 
 }
