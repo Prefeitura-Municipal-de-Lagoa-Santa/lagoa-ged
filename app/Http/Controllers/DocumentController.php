@@ -245,24 +245,76 @@ class DocumentController extends Controller
         // --- Fim da lógica de permissão do Admin ---
 
         $filePath = $document->file_location['path'];
-        //dd($filePath);
-
-        if (!Storage::disk('samba')->exists($filePath)) {
-            abort(404, 'Arquivo não encontrado no compartilhamento.');
-        }
-
+        
+        // Converter caminhos do Windows para Linux
+        $filePath = str_replace('\\', '/', $filePath);
+        // Converter extensões maiúsculas para minúsculas (caso necessário)
+        $filePath = preg_replace('/\.PDF$/', '.pdf', $filePath);
+        
         $fileName = $document->filename ?? basename($filePath);
-        $mimeType = $document->mime_type ?? Storage::disk('samba')->mimeType($filePath);
-
+        $mimeType = $document->mime_type ?? 'application/octet-stream';
+        
         // Verificar se é um download forçado
         $disposition = $request->has('download') ? 'attachment' : 'inline';
 
-        return response()->stream(function () use ($filePath) {
-            echo Storage::disk('samba')->get($filePath);
-        }, 200, [
-            'Content-Type' => $mimeType,
-            'Content-Disposition' => $disposition . '; filename="' . $fileName . '"',
-        ]);
+        // Verificar ambiente: desenvolvimento vs produção
+        if (env('APP_ENV') === 'local') {
+            // Ambiente de desenvolvimento - usar Storage disk (Samba)
+            if (!Storage::disk('samba')->exists($filePath)) {
+                abort(404, 'Arquivo não encontrado no compartilhamento.');
+            }
+            
+            // Tentar obter mime type do Storage se não existir no documento
+            if ($document->mime_type === null) {
+                try {
+                    // Para desenvolvimento, usar mime type padrão baseado na extensão
+                    $extension = strtolower(pathinfo($filePath, PATHINFO_EXTENSION));
+                    $mimeTypes = [
+                        'pdf' => 'application/pdf',
+                        'doc' => 'application/msword',
+                        'docx' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                        'xls' => 'application/vnd.ms-excel',
+                        'xlsx' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                        'jpg' => 'image/jpeg',
+                        'jpeg' => 'image/jpeg',
+                        'png' => 'image/png',
+                        'gif' => 'image/gif',
+                        'txt' => 'text/plain',
+                    ];
+                    $mimeType = $mimeTypes[$extension] ?? 'application/octet-stream';
+                } catch (\Exception $e) {
+                    $mimeType = 'application/octet-stream';
+                }
+            }
+
+            return response()->stream(function () use ($filePath) {
+                echo Storage::disk('samba')->get($filePath);
+            }, 200, [
+                'Content-Type' => $mimeType,
+                'Content-Disposition' => $disposition . '; filename="' . $fileName . '"',
+            ]);
+            
+        } else {
+            // Ambiente de produção - acesso direto ao arquivo via fstab mount
+            $fullPath = env('SAMBA_MAPPED_DRIVE_PATH') . $filePath;
+            
+            if (!file_exists($fullPath)) {
+                abort(404, 'Arquivo não encontrado no compartilhamento.');
+            }
+            
+            // Obter mime type do arquivo se não existir no documento
+            if ($document->mime_type === null) {
+                $mimeType = mime_content_type($fullPath) ?? 'application/octet-stream';
+            }
+
+            return response()->stream(function () use ($fullPath) {
+                readfile($fullPath);
+            }, 200, [
+                'Content-Type' => $mimeType,
+                'Content-Disposition' => $disposition . '; filename="' . $fileName . '"',
+                'Content-Length' => filesize($fullPath),
+            ]);
+        }
     }
 
     public function show(Document $document)
@@ -300,7 +352,7 @@ class DocumentController extends Controller
         if (!$canRead) {
             abort(403, 'Você não tem permissão para acessar os detalhes deste documento.');
         }
-
+        //dd($document->file_location['path']);
         return Inertia::render('documents/show', [
             'document' => $document,
             'canEdit' => $canEdit,
