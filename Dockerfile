@@ -36,6 +36,7 @@ COPY . .
 # Copia os arquivos de configuração
 COPY docker/nginx.conf /etc/nginx/sites-available/default
 COPY docker/supervisord.conf /etc/supervisor/conf.d/app.conf
+COPY docker/php-uploads.ini /etc/php/8.3/fpm/conf.d/99-uploads.ini
 COPY docker/entrypoint.sh /usr/local/bin/entrypoint.sh
 
 # Remove a configuração padrão do Nginx e ativa a nossa

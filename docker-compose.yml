@@ -10,6 +10,7 @@ services:
       - "8001:80"
     volumes:
       - .:/var/www/html
+      - /dados/PMLS/film:/var/www/html/storage/documentos
     networks:
       # Conecta à sua rede principal já existente
       - rede_geral_existente

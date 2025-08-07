@@ -12,10 +12,9 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Foundation\Bus\Dispatchable;
 use MongoDB\BSON\ObjectId;
 use Carbon\Carbon;
-use Illuminate\Support\Facades\Redis;
 use Illuminate\Support\Facades\DB;
 
-class ImportDocumentsJob implements ShouldQueue
+class OptimizedImportDocumentsJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
@@ -45,6 +44,9 @@ class ImportDocumentsJob implements ShouldQueue
      */
     public $maxExceptions = 3;
 
+    private $chunkSize = 100; // Processar em chunks de 100 registros
+    private $maxFileSize = 10485760; // 10MB - se maior que isso, usar chunks paralelos
+
     public function __construct($user, $tempPath, $readGroupIds, $writeGroupIds)
     {
         $this->user = $user;
@@ -58,7 +60,108 @@ class ImportDocumentsJob implements ShouldQueue
         $startTime = microtime(true);
         $user = $this->user;
         $filePath = Storage::path($this->tempPath);
+        
+        // Verificar tamanho do arquivo
+        $fileSize = filesize($filePath);
+        
+        if ($fileSize > $this->maxFileSize) {
+            Log::info("CSV Import Job: Arquivo grande detectado, processando em chunks paralelos", [
+                'file_size' => $fileSize,
+                'max_size' => $this->maxFileSize
+            ]);
+            
+            return $this->processLargeFileInChunks($filePath, $user);
+        }
+        
+        return $this->processFileDirectly($filePath, $user, $startTime);
+    }
 
+    /**
+     * Processar arquivo grande em chunks paralelos
+     */
+    private function processLargeFileInChunks($filePath, $user)
+    {
+        $jobId = uniqid('import_');
+        $chunks = [];
+        $currentChunk = [];
+        $header = [];
+        $firstRow = true;
+        
+        try {
+            $splFile = new \SplFileObject($filePath, 'r');
+            $splFile->setFlags(\SplFileObject::READ_CSV | \SplFileObject::SKIP_EMPTY | \SplFileObject::READ_AHEAD);
+
+            foreach ($splFile as $row) {
+                if ($firstRow) {
+                    $header = array_map('trim', $row);
+                    $firstRow = false;
+                    continue;
+                }
+
+                if (empty(array_filter($row))) {
+                    continue;
+                }
+
+                if (count($header) !== count($row)) {
+                    Log::warning("CSV Import Job: Linha ignorada - colunas inconsistentes", ['row' => $row]);
+                    continue;
+                }
+
+                $data = array_combine($header, array_map('trim', $row));
+                $currentChunk[] = $data;
+
+                if (count($currentChunk) >= $this->chunkSize) {
+                    $chunks[] = $currentChunk;
+                    $currentChunk = [];
+                }
+            }
+
+            // Adicionar último chunk se não estiver vazio
+            if (!empty($currentChunk)) {
+                $chunks[] = $currentChunk;
+            }
+
+            // Disparar jobs para cada chunk
+            foreach ($chunks as $index => $chunkData) {
+                ProcessDocumentChunkJob::dispatch(
+                    $user,
+                    $chunkData,
+                    $this->readGroupIds,
+                    $this->writeGroupIds,
+                    $jobId
+                )->onQueue('documents');
+                
+                Log::info("CSV Import Job: Chunk {$index} despachado", [
+                    'job_id' => $jobId,
+                    'chunk_size' => count($chunkData)
+                ]);
+            }
+
+            Storage::delete($this->tempPath);
+
+            Log::info("CSV Import Job: Processamento em chunks iniciado", [
+                'job_id' => $jobId,
+                'total_chunks' => count($chunks),
+                'total_rows' => array_sum(array_map('count', $chunks))
+            ]);
+
+            // Enviar notificação de início
+            $this->sendChunkProcessingNotification($jobId, count($chunks));
+
+        } catch (\Exception $e) {
+            Log::error("CSV Import Job: Erro ao processar arquivo em chunks - " . $e->getMessage(), [
+                'trace' => $e->getTraceAsString(),
+            ]);
+            
+            $this->sendErrorNotification($e->getMessage(), 0);
+        }
+    }
+
+    /**
+     * Processar arquivo diretamente (arquivos menores)
+     */
+    private function processFileDirectly($filePath, $user, $startTime)
+    {
         $readGroupIds = collect(array_filter($this->readGroupIds))
             ->map(fn($id) => new ObjectId($id))
             ->toArray();
@@ -70,7 +173,6 @@ class ImportDocumentsJob implements ShouldQueue
         $importedCount = 0;
         $skippedCount = 0;
         $errors = [];
-        $batchSize = 50; // Processar em lotes de 50 documentos
         $processedInBatch = 0;
 
         try {
@@ -111,7 +213,7 @@ class ImportDocumentsJob implements ShouldQueue
                     continue;
                 }
 
-                // Verificar duplicatas fora da transação para evitar timeout
+                // Verificar duplicatas
                 $existingDocument = Document::where('filename', $filename)
                     ->where('file_location.path', $fileLocationPath)
                     ->first();
@@ -126,20 +228,15 @@ class ImportDocumentsJob implements ShouldQueue
                 // Preparar dados do documento
                 $documentData = $this->prepareDocumentData($data, $user, $readGroupIds, $writeGroupIds);
                 $batch[] = $documentData;
-                $processedInBatch++;
 
-                // Processar em lotes para evitar timeout
-                if (count($batch) >= $batchSize) {
+                // Processar em lotes menores
+                if (count($batch) >= 25) { // Lotes menores para evitar timeout
                     $batchResult = $this->processBatch($batch);
                     $importedCount += $batchResult['imported'];
                     $skippedCount += $batchResult['skipped'];
                     $errors = array_merge($errors, $batchResult['errors']);
                     
                     $batch = [];
-                    $processedInBatch = 0;
-                    
-                    // Pequena pausa para aliviar a carga no banco
-                    usleep(100000); // 0.1 segundo
                     
                     // Log de progresso
                     Log::info("CSV Import Job: Lote processado. Total importados: {$importedCount}, ignorados: {$skippedCount}");
@@ -159,16 +256,6 @@ class ImportDocumentsJob implements ShouldQueue
             $duration = round(microtime(true) - $startTime, 2);
             
             Log::info("CSV Import Job: Finalizado. Importados: {$importedCount}, Ignorados: {$skippedCount}");
-            if (!empty($errors)) {
-                Log::warning("CSV Import Job: Erros encontrados", ['errors' => $errors]);
-            }
-
-            Log::info("=== CHAMANDO NOTIFICAÇÃO DE CONCLUSÃO ===", [
-                'user_id' => $this->user->id,
-                'imported_count' => $importedCount,
-                'skipped_count' => $skippedCount,
-                'duration' => $duration
-            ]);
 
             // Enviar notificação de conclusão
             $this->sendCompletionNotification($importedCount, $skippedCount, $duration);
@@ -180,22 +267,14 @@ class ImportDocumentsJob implements ShouldQueue
                 'trace' => $e->getTraceAsString(),
             ]);
             
-            Log::info("=== CHAMANDO NOTIFICAÇÃO DE ERRO ===", [
-                'user_id' => $this->user->id,
-                'error' => $e->getMessage(),
-                'duration' => $duration
-            ]);
-            
-            // Enviar notificação de erro
             $this->sendErrorNotification($e->getMessage(), $duration);
         }
     }
 
-    /**
-     * Preparar dados do documento
-     */
+    // Incluir todos os métodos auxiliares do job original
     private function prepareDocumentData($data, $user, $readGroupIds, $writeGroupIds)
     {
+        // Método igual ao job original
         $documentData = [
             'title' => $data['title'] ?? null,
             'filename' => $data['filename'],
@@ -247,52 +326,24 @@ class ImportDocumentsJob implements ShouldQueue
         return $documentData;
     }
 
-    /**
-     * Processar um lote de documentos com transação
-     */
     private function processBatch($batch)
     {
         $imported = 0;
         $skipped = 0;
         $errors = [];
 
-        try {
-            // Usar transação para garantir consistência
-            DB::transaction(function () use ($batch, &$imported, &$errors) {
-                foreach ($batch as $documentData) {
-                    try {
-                        Document::create($documentData);
-                        $imported++;
-                        Log::info("CSV Import Job: Documento importado - {$documentData['filename']}");
-                    } catch (\Exception $e) {
-                        $errors[] = "Erro ao importar {$documentData['filename']}: " . $e->getMessage();
-                        Log::error("CSV Import Job: Erro ao importar documento", [
-                            'filename' => $documentData['filename'],
-                            'error' => $e->getMessage()
-                        ]);
-                    }
-                }
-            });
-        } catch (\Exception $e) {
-            Log::error("CSV Import Job: Erro na transação do lote", [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
-            ]);
-            
-            // Em caso de erro na transação, tentar inserir individualmente
-            foreach ($batch as $documentData) {
-                try {
-                    Document::create($documentData);
-                    $imported++;
-                    Log::info("CSV Import Job: Documento importado (individual) - {$documentData['filename']}");
-                } catch (\Exception $individualError) {
-                    $skipped++;
-                    $errors[] = "Erro ao importar {$documentData['filename']}: " . $individualError->getMessage();
-                    Log::error("CSV Import Job: Erro ao importar documento individual", [
-                        'filename' => $documentData['filename'],
-                        'error' => $individualError->getMessage()
-                    ]);
-                }
+        foreach ($batch as $documentData) {
+            try {
+                Document::create($documentData);
+                $imported++;
+                Log::info("CSV Import Job: Documento importado - {$documentData['filename']}");
+            } catch (\Exception $e) {
+                $skipped++;
+                $errors[] = "Erro ao importar {$documentData['filename']}: " . $e->getMessage();
+                Log::error("CSV Import Job: Erro ao importar documento", [
+                    'filename' => $documentData['filename'],
+                    'error' => $e->getMessage()
+                ]);
             }
         }
 
@@ -303,19 +354,9 @@ class ImportDocumentsJob implements ShouldQueue
         ];
     }
 
-    /**
-     * Enviar notificação de conclusão do job
-     */
     private function sendCompletionNotification($importedCount, $skippedCount, $duration)
     {
         try {
-            Log::info("=== INICIANDO SALVAMENTO DE NOTIFICAÇÃO IMPORT ===", [
-                'user_id' => $this->user->id,
-                'imported_count' => $importedCount,
-                'skipped_count' => $skippedCount,
-                'duration' => $duration
-            ]);
-
             $notificationService = new \App\Services\EnhancedNotificationService();
             $notification = $notificationService->jobCompleted(
                 $this->user->id,
@@ -331,33 +372,48 @@ class ImportDocumentsJob implements ShouldQueue
                 ]
             );
             
-            Log::info("=== NOTIFICAÇÃO DE IMPORT SALVA NO BANCO ===", [
+            Log::info("Notificação de conclusão enviada", [
                 'user_id' => $this->user->id,
-                'notification_id' => $notification ? $notification->id : null,
-                'success' => (bool) $notification,
-                'service' => 'EnhancedNotificationService'
+                'notification_id' => $notification ? $notification->id : null
             ]);
-
         } catch (\Exception $e) {
-            Log::error("=== ERRO AO SALVAR NOTIFICAÇÃO DE IMPORT ===", [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
+            Log::error("Erro ao enviar notificação de conclusão", [
+                'error' => $e->getMessage()
             ]);
         }
     }
 
-    /**
-     * Enviar notificação de erro no job
-     */
+    private function sendChunkProcessingNotification($jobId, $totalChunks)
+    {
+        try {
+            $notificationService = new \App\Services\EnhancedNotificationService();
+            $notification = $notificationService->create(
+                $this->user->id,
+                'Processamento de Importação Iniciado',
+                "Arquivo grande detectado. Processando em {$totalChunks} partes para melhor performance.",
+                'info',
+                'import',
+                [
+                    'job_id' => $jobId,
+                    'total_chunks' => $totalChunks,
+                    'file_path' => $this->tempPath
+                ]
+            );
+            
+            Log::info("Notificação de processamento em chunks enviada", [
+                'user_id' => $this->user->id,
+                'job_id' => $jobId
+            ]);
+        } catch (\Exception $e) {
+            Log::error("Erro ao enviar notificação de chunks", [
+                'error' => $e->getMessage()
+            ]);
+        }
+    }
+
     private function sendErrorNotification($errorMessage, $duration)
     {
         try {
-            Log::info("=== ENVIANDO NOTIFICAÇÃO DE ERRO IMPORT ===", [
-                'user_id' => $this->user->id,
-                'error' => $errorMessage,
-                'duration' => $duration
-            ]);
-
             $notificationService = new \App\Services\EnhancedNotificationService();
             $notification = $notificationService->create(
                 $this->user->id,
@@ -372,16 +428,13 @@ class ImportDocumentsJob implements ShouldQueue
                 ]
             );
             
-            Log::info("=== NOTIFICAÇÃO DE ERRO IMPORT SALVA ===", [
+            Log::info("Notificação de erro enviada", [
                 'user_id' => $this->user->id,
-                'notification_id' => $notification ? $notification->id : null,
-                'success' => (bool) $notification
+                'notification_id' => $notification ? $notification->id : null
             ]);
-
         } catch (\Exception $e) {
-            Log::error("=== ERRO AO SALVAR NOTIFICAÇÃO DE ERRO IMPORT ===", [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
+            Log::error("Erro ao enviar notificação de erro", [
+                'error' => $e->getMessage()
             ]);
         }
     }

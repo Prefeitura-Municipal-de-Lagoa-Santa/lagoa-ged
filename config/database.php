@@ -120,8 +120,15 @@ return [
             'username' => env('DB_USERNAME'),
             'password' => env('DB_PASSWORD'),
             'options' => [
-                // Opções adicionais do driver MongoDB, se necessário
-                // 'database' => 'admin' // Autenticar contra o banco de dados 'admin'
+                // Configurações para evitar timeout de sessão
+                'maxPoolSize' => 100,
+                'maxIdleTimeMS' => 900000, // 15 minutos
+                'serverSelectionTimeoutMS' => 30000, // 30 segundos
+                'socketTimeoutMS' => 900000, // 15 minutos
+                'connectTimeoutMS' => 60000, // 1 minuto
+                'heartbeatFrequencyMS' => 10000, // 10 segundos
+                'retryWrites' => true,
+                'retryReads' => true,
             ],
         ],
 
