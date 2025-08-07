@@ -130,11 +130,11 @@ const selectedWriteGroupNames = computed(() => initialWriteGroups.value.map(g =>
             </div>
 
             <form @submit.prevent="submit" class="max-w-2xl mx-auto">
-                <div class="bg-white dark:bg-zinc-900 rounded-2xl shadow-xl p-8 border border-gray-200 dark:border-zinc-700">
+                <div class="bg-white dark:bg-stone-950/95 rounded-2xl shadow-xl p-8 border border-gray-200 dark:border-stone-800">
                     <div class="mb-6">
                         <InputLabel for="csv_file" value="Arquivo CSV" class="text-lg font-semibold" />
                         <input id="csv_file" type="file" @change="handleFileUpload"
-                            class="mt-2 block w-full rounded-xl border-2 border-indigo-300 dark:border-indigo-700 bg-indigo-50 dark:bg-zinc-900 px-4 py-3 text-base text-gray-700 dark:text-gray-200 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-base file:font-semibold file:bg-indigo-600 file:text-white hover:file:bg-indigo-700"
+                            class="mt-2 block w-full rounded-xl border-2 border-indigo-300 dark:border-indigo-700 bg-indigo-50 dark:bg-stone-950/95 px-4 py-3 text-base text-gray-700 dark:text-gray-200 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-base file:font-semibold file:bg-indigo-600 file:text-white hover:file:bg-indigo-700"
                             accept=".csv" />
                         <InputError :message="form.errors.csv_file" class="mt-2" />
                     </div>
@@ -147,14 +147,14 @@ const selectedWriteGroupNames = computed(() => initialWriteGroups.value.map(g =>
                             </Button>
                         </div>
                         <div v-if="selectedReadGroupNames.length > 0"
-                            class="flex flex-wrap gap-2 rounded-xl border-2 border-indigo-300 dark:border-indigo-700 bg-indigo-50 dark:bg-zinc-800 p-3 min-h-[40px] items-center">
+                            class="flex flex-wrap gap-2 rounded-xl border-2 border-indigo-300 dark:border-indigo-700 bg-indigo-50 dark:bg-stone-900/80 p-3 min-h-[40px] items-center">
                             <span v-for="groupName in selectedReadGroupNames" :key="groupName"
                                 class="inline-flex items-center rounded-full bg-indigo-600 px-3 py-1 text-base font-semibold shadow-sm text-white dark:bg-indigo-700">
                                 {{ groupName }}
                             </span>
                         </div>
                         <div v-else
-                            class="flex items-center justify-center rounded-xl border-2 border-indigo-300 dark:border-indigo-700 bg-indigo-50 dark:bg-zinc-800 p-3 min-h-[40px] text-base text-muted-foreground dark:text-gray-400">
+                            class="flex items-center justify-center rounded-xl border-2 border-indigo-300 dark:border-indigo-700 bg-indigo-50 dark:bg-stone-900/80 p-3 min-h-[40px] text-base text-muted-foreground dark:text-gray-400">
                             <span>Nenhum grupo de leitura selecionado.</span>
                         </div>
                         <InputError :message="form.errors.read_group_ids" class="mt-2" />
@@ -168,14 +168,14 @@ const selectedWriteGroupNames = computed(() => initialWriteGroups.value.map(g =>
                             </Button>
                         </div>
                         <div v-if="selectedWriteGroupNames.length > 0"
-                            class="flex flex-wrap gap-2 rounded-xl border-2 border-indigo-300 dark:border-indigo-700 bg-indigo-50 dark:bg-zinc-800 p-3 min-h-[40px] items-center">
+                            class="flex flex-wrap gap-2 rounded-xl border-2 border-indigo-300 dark:border-indigo-700 bg-indigo-50 dark:bg-stone-900/80 p-3 min-h-[40px] items-center">
                             <span v-for="groupName in selectedWriteGroupNames" :key="groupName"
                                 class="inline-flex items-center rounded-full bg-indigo-600 px-3 py-1 text-base font-semibold shadow-sm text-white dark:bg-indigo-700">
                                 {{ groupName }}
                             </span>
                         </div>
                         <div v-else
-                            class="flex items-center justify-center rounded-xl border-2 border-indigo-300 dark:border-indigo-700 bg-indigo-50 dark:bg-zinc-800 p-3 min-h-[40px] text-base text-muted-foreground dark:text-gray-400">
+                            class="flex items-center justify-center rounded-xl border-2 border-indigo-300 dark:border-indigo-700 bg-indigo-50 dark:bg-stone-900/80 p-3 min-h-[40px] text-base text-muted-foreground dark:text-gray-400">
                             <span>Nenhum grupo de escrita selecionado.</span>
                         </div>
                         <InputError :message="form.errors.write_group_ids" class="mt-2" />

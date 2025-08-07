@@ -139,6 +139,7 @@ class DocumentController extends Controller
             'tags',
             'document_year',
             'other_metadata',
+            'per_page',
         ]);
 
         // **CORREÇÃO para LogicException e Potencialmente para TypeError:**
@@ -192,7 +193,8 @@ class DocumentController extends Controller
         }); // Fim da closure principal que agrupa todos os filtros
 
         // 3. Paginação e Ordenação Final
-        $documents = $query->orderBy('created_at', 'desc')->paginate(15)->appends($request->query());
+        $perPage = $request->input('per_page', 25);
+        $documents = $query->orderBy('created_at', 'desc')->paginate($perPage)->appends($request->query());
         //dd($documents);
         return Inertia::render('documents/index', [
             'documents' => $documents,
@@ -380,7 +382,7 @@ class DocumentController extends Controller
         $query = Document::query();
 
         // Filtros semelhantes à index usando MongoDB regex
-        $filters = $request->only(['title', 'tags', 'document_year', 'other_metadata']);
+        $filters = $request->only(['title', 'tags', 'document_year', 'other_metadata', 'per_page']);
 
         $query->where(function ($q) use ($filters) {
             // Filtro por Título
@@ -424,7 +426,8 @@ class DocumentController extends Controller
             }
         });
 
-        $documents = $query->select(['id', 'title', 'metadata'])->paginate(20)->withQueryString();
+        $perPage = $request->input('per_page', 25);
+        $documents = $query->select(['id', 'title', 'metadata'])->paginate($perPage)->withQueryString();
         $groups = Group::select(['id', 'name'])->get();
 
         // Para o filtro de anos

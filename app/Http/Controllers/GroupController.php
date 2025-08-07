@@ -5,25 +5,28 @@ namespace App\Http\Controllers;
 use App\Http\Requests\StoreGroupRequest;
 use App\Models\Group;
 use App\Models\User;
-//use Illuminate\Http\Request;
+use Illuminate\Http\Request;
 use App\Http\Requests\UpdateGroupRequest;
 use Illuminate\Auth\Access\AuthorizationException;
 use Inertia\Inertia;
 use Illuminate\Http\JsonResponse;
 use Redirect;
-use Request;
 use MongoDB\BSON\ObjectId;
 
 class GroupController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
+        $perPage = $request->input('per_page', 25);
         $groups = Group::query()
             ->orderBy('created_at', 'desc')
-            ->paginate(15);
+            ->paginate($perPage);
+            
+        $filters = $request->only(['per_page']);
+        
         return Inertia::render('permissions/groups', [
             'groups' => $groups,
-            'filters' => [],
+            'filters' => $filters,
         ]);
     }
     public function edit(Group $group)

@@ -5,6 +5,7 @@ import { ref, watch } from 'vue';
 import { Button } from '@/components/ui/button';
 import { Eye, FilePlus, Pencil, Plus, Trash, ChevronDown, ChevronUp, SquarePen, Filter, X } from 'lucide-vue-next';
 import { BreadcrumbItem } from '@/types';
+import Pagination from '@/components/ui/Pagination.vue';
 
 interface Document {
   id: string;
@@ -35,6 +36,12 @@ interface PaginatedDocuments {
     label: string;
     active: boolean;
   }>;
+  current_page: number;
+  last_page: number;
+  per_page: number;
+  total: number;
+  from: number;
+  to: number;
 };
 
 interface Props {
@@ -51,6 +58,7 @@ const form = ref({
   tags: props.filters?.tags || '',
   document_year: props.filters?.document_year || '',
   other_metadata: props.filters?.other_metadata || '',
+  per_page: props.filters?.per_page || 25,
 });
 
 // Calcula se algum filtro está ativo para decidir se a caixa deve iniciar aberta
@@ -81,6 +89,27 @@ watch(form, (newForm) => {
     applyFilters();
   }, 300);
 }, { deep: true });
+
+const handlePerPageChange = (perPage: number) => {
+  // Atualiza diretamente sem esperar o watcher
+  const newFilters = {
+    ...form.value,
+    per_page: perPage
+  };
+  
+  // Remove valores vazios
+  const cleanForm = Object.fromEntries(
+    Object.entries(newFilters).filter(([, value]) => value !== '' && value !== null && value !== 0)
+  );
+  
+  router.get(route('documents.index'), cleanForm, {
+    preserveState: true,
+    preserveScroll: true,
+    onSuccess: () => {
+      form.value.per_page = perPage;
+    }
+  });
+};
 
 const getTypeBadgeClass = (docType?: string): string => {
   switch (docType?.toUpperCase()) {
@@ -175,17 +204,17 @@ const breadcrumbs: BreadcrumbItem[] = [
           </div>
         </div>
         <div class="mt-6 flex justify-end">
-          <Button @click="form = { title: '', tags: '', document_year: '', other_metadata: '' }; applyFilters();" variant="outline" class="flex items-center gap-2 px-4 py-2 rounded-xl font-semibold transition shadow">
+          <Button @click="form = { title: '', tags: '', document_year: '', other_metadata: '', per_page: 25 }; applyFilters();" variant="outline" class="flex items-center gap-2 px-4 py-2 rounded-xl font-semibold transition shadow">
             <X class="h-4 w-4" />
             Limpar Filtros
           </Button>
         </div>
       </div>
 
-      <div class="overflow-x-auto bg-white dark:bg-stone-950/95 rounded-2xl shadow-xl border border-gray-200 dark:border-stone-800 hidden md:block">
+      <div class="overflow-x-auto bg-white dark:bg-stone-800 rounded-2xl shadow-xl hidden md:block">
         <table class="min-w-full">
           <thead class="bg-gray-50 dark:bg-stone-900/80">
-            <tr class="border-b border-gray-200 dark:border-stone-700">
+            <tr>
               <th scope="col"
                 class="px-6 py-4 text-left text-xs font-bold text-gray-700 dark:text-gray-200 uppercase tracking-wider">TÍTULO
               </th>
@@ -239,12 +268,12 @@ const breadcrumbs: BreadcrumbItem[] = [
 
       <div class="md:hidden">
         <div v-if="props.documents.data.length === 0"
-          class="bg-white dark:bg-stone-950/95 p-8 rounded-2xl shadow-xl border border-gray-200 dark:border-stone-800 text-center text-base text-gray-500 dark:text-gray-400">
+          class="bg-white dark:bg-stone-950/95 p-8 rounded-2xl shadow-xl text-center text-base text-gray-500 dark:text-gray-400">
           Nenhum documento encontrado.
         </div>
         <div v-else class="grid gap-6">
           <div v-for="doc in props.documents.data" :key="doc.id"
-            class="bg-white dark:bg-stone-950/95 p-6 rounded-2xl shadow-xl border border-gray-200 dark:border-stone-800">
+            class="bg-white dark:bg-stone-950/95 p-6 rounded-2xl shadow-xl ">
             <a :href="route('documents.show', doc.id)">
               <div class="flex justify-between items-start mb-4">
                 <h3 class="text-xl font-bold text-gray-900 dark:text-white break-words pr-2">
@@ -281,7 +310,7 @@ const breadcrumbs: BreadcrumbItem[] = [
                   </div>
                 </template>
               </div>
-              <div class="flex justify-end gap-3 mt-4 pt-4 border-t border-gray-200 dark:border-stone-700">
+              <div class="flex justify-end gap-3 mt-4 pt-4">
                 <a :href="route('documents.edit', doc.id)" class="text-green-600 dark:text-green-400 hover:text-green-500 transition p-2 rounded-xl" title="Editar">
                   <SquarePen class="h-5 w-5"/>
                 </a>
@@ -293,18 +322,13 @@ const breadcrumbs: BreadcrumbItem[] = [
           </div>
         </div>
       </div>
-      <div v-if="props.documents.links && props.documents.links.length > 3" class="mt-8 flex justify-center">
-        <div class="flex flex-wrap gap-2">
-          <template v-for="(link, key) in props.documents.links" :key="key">
-            <div v-if="link.url === null"
-              class="px-4 py-2 text-base font-medium text-gray-400 dark:text-gray-500 bg-gray-100 dark:bg-stone-800 border border-gray-200 dark:border-stone-700 rounded-xl" v-html="link.label" />
-            <Link v-else
-              class="px-4 py-2 text-base font-medium border rounded-xl hover:bg-gray-50 dark:hover:bg-stone-800 focus:border-blue-500 focus:text-blue-600 dark:focus:text-blue-400 transition-colors shadow"
-              :class="{ 'bg-blue-600 text-white hover:bg-blue-700 border-blue-600': link.active, 'text-gray-700 dark:text-gray-200 bg-white dark:bg-stone-900 border-gray-200 dark:border-stone-700': !link.active }" :href="link.url"
-              v-html="link.label" />
-          </template>
-        </div>
-      </div>
+      
+      <!-- Paginação -->
+      <Pagination 
+        :pagination-data="props.documents"
+        :current-per-page="Number(form.per_page)"
+        @update:per-page="handlePerPageChange"
+      />
     </div>
   </DashboardLayout>
 </template>

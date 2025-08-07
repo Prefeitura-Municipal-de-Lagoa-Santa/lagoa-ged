@@ -39,15 +39,15 @@ class ConvertFlashToSininho
         }
         
         // Log para debug - sempre logar
-        \Log::info('ConvertFlashToSininho: Middleware executado', [
-            'path' => $path,
-            'user_id' => (string) $user->id,
-            'method' => $request->method(),
-            'is_ajax' => $request->ajax(),
-            'wants_json' => $request->wantsJson(),
-            'expects_json' => $request->expectsJson(),
-            'inertia' => $request->header('X-Inertia')
-        ]);
+        //\Log::info('ConvertFlashToSininho: Middleware executado', [
+        //    'path' => $path,
+        //    'user_id' => (string) $user->id,
+        //    'method' => $request->method(),
+        //    'is_ajax' => $request->ajax(),
+        //    'wants_json' => $request->wantsJson(),
+        //    'expects_json' => $request->expectsJson(),
+        //    'inertia' => $request->header('X-Inertia')
+        //]);
         
         // Só processar se houver mensagens flash ativas
         $hasFlashMessages = false;
@@ -60,9 +60,9 @@ class ConvertFlashToSininho
         }
         
         if (!$hasFlashMessages) {
-            \Log::info('ConvertFlashToSininho: Nenhuma mensagem flash encontrada', [
-                'session_all' => Session::all()
-            ]);
+            //\Log::info('ConvertFlashToSininho: Nenhuma mensagem flash encontrada', [
+            //    'session_all' => Session::all()
+            //]);
             return $response;
         }
         

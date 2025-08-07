@@ -65,7 +65,7 @@ function submitGroupForm() {
     <DashboardLayout :breadcrumbs="breadcrumbs">
         <div class="container mx-auto py-8 px-4">
             <div class="mb-8">
-                <h1 class="text-4xl font-bold text-gray-900 dark:text-white mb-2">
+                <h1 class="text-3xl font-bold text-gray-900 dark:text-stone-50 mb-2">
                     Editar Grupo: {{ props.group.name }}
                 </h1>
                 <p class="text-gray-600 dark:text-gray-400 text-lg">
@@ -73,10 +73,10 @@ function submitGroupForm() {
                 </p>
             </div>
 
-            <div class="bg-white dark:bg-zinc-900 rounded-2xl shadow-xl p-8 border border-gray-200 dark:border-zinc-700 max-w-2xl mx-auto">
-                <div class="mb-6 border-b border-gray-200 dark:border-zinc-700 pb-4">
-                    <h2 class="text-2xl font-semibold text-gray-800 dark:text-white flex items-center gap-2">
-                        <span class="inline-block w-2 h-8 bg-indigo-500 rounded-full mr-2"></span>
+            <div class="bg-white dark:bg-stone-950/95 rounded-2xl shadow-xl p-8 border border-gray-200 dark:border-stone-800 max-w-2xl mx-auto">
+                <div class="mb-6 border-b border-gray-200 dark:border-stone-800 pb-4">
+                    <h2 class="text-2xl font-semibold text-gray-800 dark:text-stone-50 flex items-center gap-2">
+                        <span class="inline-block w-2 h-8 bg-blue-600 rounded-full mr-2"></span>
                         Detalhes do Grupo
                     </h2>
                 </div>

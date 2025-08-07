@@ -147,7 +147,7 @@ function submitForm() {
                     <button 
                         type="button" 
                         @click="addMetadataField" 
-                        class="px-4 py-2 rounded-lg bg-green-600 text-white hover:bg-green-700 text-base font-semibold flex items-center gap-2 transition"
+                        class="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 text-base font-semibold flex items-center gap-2 transition"
                     >
                         <Plus class="w-4 h-4" />
                         Adicionar
