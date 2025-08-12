@@ -38,7 +38,7 @@ class GroupSeeder extends Seeder
                 'user_ids' => [],
             ]);
             Group::create([
-                'name' => 'PROCESSSOS',
+                'name' => 'PROCESSOS',
                 'description' => 'Documentos de Processos de Protocolo',
                 'user_ids' => [],
             ]);
