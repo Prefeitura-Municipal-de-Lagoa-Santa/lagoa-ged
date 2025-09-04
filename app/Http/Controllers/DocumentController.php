@@ -211,12 +211,10 @@ class DocumentController extends Controller
     // Método auxiliar para obter uma lista de anos (para o select do frontend)
     private function getAvailableYears(): array
     {
-        $currentYear = Carbon::now()->year;
-        $years = [];
-        // Gera anos dos últimos 20 anos até o próximo ano (ou como desejar)
-        for ($i = $currentYear + 1; $i >= $currentYear - 20; $i--) {
-            $years[] = $i;
-        }
+        $result = Document::distinct('metadata.document_year')->get()->toArray();
+       //dd($result);
+        $years = array_column($result, '0');
+        //dd($years);
         return $years;
     }
 
