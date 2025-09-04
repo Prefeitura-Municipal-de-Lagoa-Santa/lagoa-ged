@@ -197,7 +197,15 @@ class DocumentController extends Controller
 
         // 3. Paginação e Ordenação Final
         $perPage = $request->input('per_page', 25);
+        
+        // Force HTTPS before pagination
+        \Illuminate\Support\Facades\URL::forceScheme('https');
+        
         $documents = $query->orderBy('created_at', 'desc')->paginate($perPage)->appends($request->query());
+        
+        // Force HTTPS in pagination URLs after creation
+        $documents->withPath(str_replace('http://', 'https://', $request->url()));
+        
         //dd($documents);
         
         return Inertia::render('documents/index', [

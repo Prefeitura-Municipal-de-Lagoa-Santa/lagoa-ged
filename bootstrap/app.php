@@ -1,11 +1,15 @@
 <?php
 
+use App\Http\Middleware\ForcePaginationHttps;
+use App\Http\Middleware\ForceHttpsUrls;
 use App\Http\Middleware\HandleAppearance;
 use App\Http\Middleware\HandleInertiaRequests;
+use App\Http\Middleware\TrustProxies;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets;
+use Illuminate\Support\Facades\Route;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -16,7 +20,12 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware) {
         $middleware->encryptCookies(except: ['appearance', 'sidebar_state']);
 
+        // Add TrustProxies middleware to properly handle HTTPS detection
+        $middleware->trustProxies(at: TrustProxies::class);
+
         $middleware->web(append: [
+            ForcePaginationHttps::class,
+            ForceHttpsUrls::class,
             HandleAppearance::class,
             HandleInertiaRequests::class,
             AddLinkHeadersForPreloadedAssets::class,
