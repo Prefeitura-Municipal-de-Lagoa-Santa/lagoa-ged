@@ -22,7 +22,8 @@ class ImportDocumentRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'csv_file' => 'required|file|mimes:csv,txt|max:20480', // Max 20MB (20480 KB)
+            // max 40MB
+            'csv_file' => 'required|file|mimes:csv,txt|max:40960', // Max 40MB (40960 KB)
             'read_group_ids' => 'nullable|array',
             'read_group_ids.*' => 'string', // IDs do MongoDB são strings, não esqueça
             'write_group_ids' => 'nullable|array',
@@ -37,7 +38,7 @@ class ImportDocumentRequest extends FormRequest
             'csv_file.required' => 'Por favor, selecione um arquivo CSV para importar.',
             'csv_file.file' => 'O campo de arquivo CSV deve ser um arquivo válido.',
             'csv_file.mimes' => 'O arquivo deve ser do tipo CSV ou TXT.',
-            'csv_file.max' => 'O tamanho máximo do arquivo CSV é de 10 MB.',
+            'csv_file.max' => 'O tamanho máximo do arquivo CSV é de 40 MB.',
             'read_group_ids.array' => 'Os grupos de leitura devem ser selecionados como um array.',
             'write_group_ids.array' => 'Os grupos de escrita devem ser selecionados como um array.',
             'deny_group_ids.array' => 'Os grupos bloqueados devem ser selecionados como um array.',
