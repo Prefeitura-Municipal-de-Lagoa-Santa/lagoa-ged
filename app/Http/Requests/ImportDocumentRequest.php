@@ -21,9 +21,10 @@ class ImportDocumentRequest extends FormRequest
      */
     public function rules(): array
     {
+        
         return [
-            // max 40MB
-            'csv_file' => 'required|file|mimes:csv,txt|max:40960', // Max 40MB (40960 KB)
+            // max 20MB
+            'csv_file' => 'required|file|mimes:csv,txt|max:20480', // Max 20MB (20480 KB)
             'read_group_ids' => 'nullable|array',
             'read_group_ids.*' => 'string', // IDs do MongoDB são strings, não esqueça
             'write_group_ids' => 'nullable|array',

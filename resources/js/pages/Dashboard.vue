@@ -166,7 +166,7 @@ const canSeePagamentosCard = computed(() => {
                 </Link>
 
 
-                <Link v-if="canSeeRHCard" :href="route('documents.index', { other_metadata: 'RH' })"
+                <Link v-if="canSeeRHCard" :href="route('documents.index', { other_metadata: 'RECURSOS HUMANOS' })"
                     class="group relative overflow-hidden bg-gradient-to-br from-orange-500 to-orange-700 hover:from-orange-600 hover:to-orange-800 rounded-2xl p-6 transition-all duration-300 hover:scale-[1.02] hover:shadow-2xl hover:shadow-orange-500/25">
                     
                     <!-- Background Pattern -->
@@ -180,7 +180,7 @@ const canSeePagamentosCard = computed(() => {
                                 <FileUser class="w-8 h-8 text-white drop-shadow-lg" strokeWidth={2.5} />
                             </div>
                             <div class="text-right">
-                                <div class="text-3xl font-bold text-white drop-shadow-md">{{ documents['RH'] || 0 }}</div>
+                                <div class="text-3xl font-bold text-white drop-shadow-md">{{ documents['RECURSOS HUMANOS'] || 0 }}</div>
                                 <div class="text-orange-100 text-sm">documentos</div>
                             </div>
                         </div>
