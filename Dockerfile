@@ -39,6 +39,14 @@ COPY docker/supervisord.conf /etc/supervisor/conf.d/app.conf
 COPY docker/php-uploads.ini /etc/php/8.3/fpm/conf.d/99-uploads.ini
 COPY docker/entrypoint.sh /usr/local/bin/entrypoint.sh
 
+# Configurações PHP condicionais baseadas no ambiente
+ARG APP_ENV=production
+COPY docker/php-production.ini /tmp/php-production.ini
+RUN if [ "$APP_ENV" = "production" ]; then \
+    cp /tmp/php-production.ini /etc/php/8.3/fpm/conf.d/98-production.ini && \
+    cp /tmp/php-production.ini /etc/php/8.3/cli/conf.d/98-production.ini; \
+fi
+
 # Remove a configuração padrão do Nginx e ativa a nossa
 RUN rm -f /etc/nginx/sites-enabled/default && \
     ln -s /etc/nginx/sites-available/default /etc/nginx/sites-enabled/default && \

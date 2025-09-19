@@ -12,10 +12,11 @@ services:
     volumes:
       - .:/var/www/html
       - /dados/PMLS/film:/var/www/html/storage/documentos
-    networks:
-      - rede_geral_existente
     env_file:
       - .env
+    depends_on:
+      - mongodb_prod
+      - redis_prod
       
   mongodb_prod:
     image: mongo:latest
@@ -27,12 +28,10 @@ services:
       MONGO_INITDB_ROOT_USERNAME: ${DB_USERNAME}
       MONGO_INITDB_ROOT_PASSWORD: ${DB_PASSWORD}
     volumes:
-      # USANDO O VOLUME COM OS DADOS RECUPERADOS
-      - 1a2b404226a906447d3c05931a3910a5250429059d578c61ab025d1336adde31:/data/db
+      # VOLUME COM OS DADOS RECUPERADOS - 206.695 documentos + 5 usuários + 6 grupos
+      - "1a2b404226a906447d3c05931a3910a5250429059d578c61ab025d1336adde31:/data/db"
     env_file:
       - .env
-    networks:
-      - rede_geral_existente
   
   redis_prod:
     image: redis/redis-stack-server:latest
@@ -45,9 +44,7 @@ services:
       REDIS_PASSWORD: ${REDIS_PASSWORD}
     env_file:
       - .env
-    networks:
-      - rede_geral_existente
 
-networks:
-  rede_geral_existente:
+volumes:
+  1a2b404226a906447d3c05931a3910a5250429059d578c61ab025d1336adde31:
     external: true

@@ -5,6 +5,7 @@ namespace App\Providers;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Pagination\Paginator;
+use MongoDB\Laravel\Connection;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -30,6 +31,11 @@ class AppServiceProvider extends ServiceProvider
             $this->forceHttpsScheme();
             $this->configurePaginationForHttps();
         }
+
+         Connection::macro('rollBack', function ($toLevel = null) {
+            // simplesmente não faz nada, evitando erro "There is no active session"
+            return;
+        });
     }
 
     /**

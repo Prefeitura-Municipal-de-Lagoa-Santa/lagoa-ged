@@ -186,9 +186,6 @@ return [
             'password' => env('REDIS_PASSWORD'),
             'port' => env('REDIS_PORT', '6379'),
             'database' => env('REDIS_DB', '0'),
-            // Timeouts para conexões redis (segundos)
-            'timeout' => env('REDIS_TIMEOUT', 30),
-            'read_timeout' => env('REDIS_READ_TIMEOUT', 60),
         ],
 
         'cache' => [

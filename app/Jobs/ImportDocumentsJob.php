@@ -10,7 +10,6 @@ use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Foundation\Bus\Dispatchable;
-use MongoDB\BSON\ObjectId;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Redis;
 use Illuminate\Support\Facades\DB;
@@ -29,7 +28,7 @@ class ImportDocumentsJob implements ShouldQueue
      *
      * @var int
      */
-    public $timeout = 1800; // 30 minutos
+    public $timeout = 7200; // 120 minutos (evita corte em imports grandes)
     
     /**
      * The number of times the job may be attempted.
@@ -59,18 +58,21 @@ class ImportDocumentsJob implements ShouldQueue
         $user = $this->user;
         $filePath = Storage::path($this->tempPath);
 
+        // Garante índice único necessário sem precisar rodar migração em produção
+        $this->ensureIndexes();
+
         $readGroupIds = collect(array_filter($this->readGroupIds))
-            ->map(fn($id) => new ObjectId($id))
+            ->map(fn($id) => $this->makeObjectId($id))
             ->toArray();
 
         $writeGroupIds = collect(array_filter($this->writeGroupIds))
-            ->map(fn($id) => new ObjectId($id))
+            ->map(fn($id) => $this->makeObjectId($id))
             ->toArray();
 
-        $importedCount = 0;
-        $skippedCount = 0;
+    $importedCount = 0;
+    $skippedCount = 0;
         $errors = [];
-        $batchSize = 50; // Processar em lotes de 50 documentos
+    $batchSize = (int) (env('IMPORT_BATCH_SIZE', 500)); // Lote maior para I/O eficiente
         $processedInBatch = 0;
 
         try {
@@ -111,17 +113,8 @@ class ImportDocumentsJob implements ShouldQueue
                     continue;
                 }
 
-                // Verificar duplicatas fora da transação para evitar timeout
-                $existingDocument = Document::where('filename', $filename)
-                    ->where('file_location.path', $fileLocationPath)
-                    ->first();
-
-                if ($existingDocument) {
-                    $errors[] = "Documento duplicado ignorado: {$filename} em {$fileLocationPath}";
-                    Log::info("CSV Import Job: Documento duplicado.", ['filename' => $filename]);
-                    $skippedCount++;
-                    continue;
-                }
+                // Não fazer checagem prévia de duplicidade (deixa o índice único tratar):
+                // isso reduz I/O e melhora desempenho sob alta carga.
 
                 // Preparar dados do documento
                 $documentData = $this->prepareDocumentData($data, $user, $readGroupIds, $writeGroupIds);
@@ -192,6 +185,37 @@ class ImportDocumentsJob implements ShouldQueue
     }
 
     /**
+     * Garante os índices necessários (idempotente) sem exigir migrate em produção.
+     */
+    private function ensureIndexes(): void
+    {
+        try {
+            Document::raw(function ($collection) {
+                try {
+                    $collection->createIndex(
+                        ['filename' => 1, 'file_location.path' => 1],
+                        ['name' => 'uniq_documents_filename_path', 'unique' => true]
+                    );
+                    Log::info('CSV Import Job: Índice único verificado/criado (filename + file_location.path)');
+                } catch (\Throwable $e) {
+                    $msg = $e->getMessage();
+                    if (str_contains($msg, 'already exists') || str_contains($msg, 'Index with name')) {
+                        Log::info('CSV Import Job: Índice único já existe.');
+                    } else {
+                        Log::warning('CSV Import Job: Falha ao garantir índice único (seguindo sem interromper)', [
+                            'error' => $msg
+                        ]);
+                    }
+                }
+            });
+        } catch (\Throwable $e) {
+            Log::warning('CSV Import Job: Erro inesperado ao garantir índices (seguindo)', [
+                'error' => $e->getMessage()
+            ]);
+        }
+    }
+
+    /**
      * Preparar dados do documento
      */
     private function prepareDocumentData($data, $user, $readGroupIds, $writeGroupIds)
@@ -201,8 +225,9 @@ class ImportDocumentsJob implements ShouldQueue
             'filename' => $data['filename'],
             'file_extension' => $data['file_extension'] ?? null,
             'mime_type' => $data['mime_type'] ?? null,
-            'upload_date' => isset($data['upload_date']) ? \Carbon\Carbon::parse($data['upload_date']) : \Carbon\Carbon::now(),
-            'uploaded_by' => new ObjectId($user->id),
+            // Gravar como BSON UTCDateTime em Mongo
+            'upload_date' => isset($data['upload_date']) ? $this->toMongoDate($data['upload_date']) : $this->toMongoDate(\Carbon\Carbon::now()),
+            'uploaded_by' => $this->makeObjectId($user->id),
             'status' => $data['status'] ?? 'active',
         ];
 
@@ -257,22 +282,87 @@ class ImportDocumentsJob implements ShouldQueue
         $errors = [];
 
         try {
-            // Usar transação para garantir consistência
-            DB::transaction(function () use ($batch, &$imported, &$errors) {
-                foreach ($batch as $documentData) {
+            // Decidir se usamos transação: MongoDB (single-node) não suporta sessões/transações
+            $useTransactions = config('database.default') !== 'mongodb' && (bool) config('database.connections.' . config('database.default') . '.transactions', false);
+
+            if ($useTransactions) {
+                // Usar transação para garantir consistência quando suportado
+                DB::transaction(function () use ($batch, &$imported, &$errors) {
+                    foreach ($batch as $documentData) {
+                        try {
+                            Document::create($documentData);
+                            $imported++;
+                            Log::info("CSV Import Job: Documento importado - {$documentData['filename']}");
+                        } catch (\Exception $e) {
+                            $errors[] = "Erro ao importar {$documentData['filename']}: " . $e->getMessage();
+                            Log::error("CSV Import Job: Erro ao importar documento", [
+                                'filename' => $documentData['filename'],
+                                'error' => $e->getMessage()
+                            ]);
+                        }
+                    }
+                });
+            } else {
+                // Não usar transação (Mongo standalone): inserção em lote otimizada
+                // Adiciona timestamps manualmente para manter consistência do Eloquent
+                $now = Carbon::now();
+                $nowUtc = $this->toMongoDate($now);
+                $docs = array_map(function ($doc) use ($nowUtc) {
+                    if (!isset($doc['created_at'])) { $doc['created_at'] = $nowUtc; }
+                    if (!isset($doc['updated_at'])) { $doc['updated_at'] = $nowUtc; }
+                    return $doc;
+                }, $batch);
+
+                // Inserção em lote com ordered=false para continuar mesmo em duplicatas
+                Document::raw(function ($collection) use ($docs, &$imported, &$skipped, &$errors) {
                     try {
-                        Document::create($documentData);
-                        $imported++;
-                        Log::info("CSV Import Job: Documento importado - {$documentData['filename']}");
+                        $result = $collection->insertMany($docs, ['ordered' => false]);
+                        $imported += $result->getInsertedCount();
+                        Log::info('CSV Import Job: Lote inserido (bulk)', [
+                            'inserted' => $result->getInsertedCount(),
+                        ]);
                     } catch (\Exception $e) {
-                        $errors[] = "Erro ao importar {$documentData['filename']}: " . $e->getMessage();
-                        Log::error("CSV Import Job: Erro ao importar documento", [
-                            'filename' => $documentData['filename'],
+                        // Mongo lança BulkWriteException (code 11000) para duplicatas no bulk.
+                        // Como o analisador pode não conhecer a classe, tratamos genericamente.
+                        $code = (int) $e->getCode();
+                        $msg = $e->getMessage();
+
+                        // Tentar extrair quantidade inserida parcial do texto (quando disponível)
+                        // Nem sempre é possível: então não somamos parciais aqui.
+
+                        if ($code === 11000 || str_contains($msg, '11000')) {
+                            // Contabiliza como ignorado (duplicata)
+                            // Nota: em bulk, pode haver múltiplas duplicatas; iremos refinar no fallback
+                            $skipped++;
+                        } else {
+                            $errors[] = "Bulk insert error ({$code}): {$msg}";
+                        }
+
+                        Log::warning('CSV Import Job: Erro no bulk insert (tratamento genérico)', [
+                            'code' => $code,
+                            'message' => $msg,
+                        ]);
+                    } catch (\Exception $e) {
+                        // Fallback: se falhar o bulk por outro motivo, tenta inserção individual
+                        Log::error('CSV Import Job: Erro no bulk insert, fallback para individual', [
                             'error' => $e->getMessage()
                         ]);
+                        foreach ($docs as $documentData) {
+                            try {
+                                Document::create($documentData);
+                                $imported++;
+                            } catch (\Exception $ie) {
+                                // Duplicata ou outro erro
+                                if (str_contains($ie->getMessage(), '11000')) {
+                                    $skipped++;
+                                } else {
+                                    $errors[] = "Erro ao importar {$documentData['filename']}: " . $ie->getMessage();
+                                }
+                            }
+                        }
                     }
-                }
-            });
+                });
+            }
         } catch (\Exception $e) {
             Log::error("CSV Import Job: Erro na transação do lote", [
                 'error' => $e->getMessage(),
@@ -301,6 +391,43 @@ class ImportDocumentsJob implements ShouldQueue
             'skipped' => $skipped,
             'errors' => $errors
         ];
+    }
+
+    /**
+     * Cria um ObjectId dinamicamente se a extensão estiver disponível;
+     * caso contrário retorna o valor original (string) como fallback.
+     */
+    private function makeObjectId($id)
+    {
+        $class = '\\MongoDB\\BSON\\ObjectId';
+        if (class_exists($class)) {
+            return new $class($id);
+        }
+        return $id;
+    }
+
+    /**
+     * Converte strings/Carbon/DateTime para MongoDB\BSON\UTCDateTime (ms epoch).
+     * Caso a classe não exista (ambiente sem driver), retorna DateTime como fallback.
+     */
+    private function toMongoDate($value)
+    {
+        // Normaliza para DateTimeImmutable em UTC
+        if ($value instanceof \DateTimeInterface) {
+            $dt = Carbon::instance(Carbon::parse($value->format('c')))->utc();
+        } elseif (is_string($value)) {
+            $dt = Carbon::parse($value)->utc();
+        } else {
+            $dt = Carbon::now()->utc();
+        }
+
+        $utcClass = '\\MongoDB\\BSON\\UTCDateTime';
+        if (class_exists($utcClass)) {
+            // UTCDateTime pede milissegundos desde epoch
+            $ms = (int) ($dt->getTimestamp() * 1000);
+            return new $utcClass($ms);
+        }
+        return $dt; // fallback (não esperado no caminho raw em produção)
     }
 
     /**

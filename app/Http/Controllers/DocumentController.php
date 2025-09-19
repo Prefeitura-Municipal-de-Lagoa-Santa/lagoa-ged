@@ -6,6 +6,7 @@ use App\Http\Requests\BatchUpdateDocumentPermissionsRequest;
 use App\Http\Requests\ImportDocumentRequest;
 use App\Jobs\BatchUpdateDocumentPermissionsJob;
 use App\Jobs\ImportDocumentsJob;
+use App\Jobs\OptimizedImportDocumentsJob;
 use App\Models\Document;
 use App\Models\Group;
 use App\Models\User;
@@ -420,12 +421,26 @@ class DocumentController extends Controller
         $file = $request->file('csv_file');
         $tempPath = $file->store('imports/tmp');
 
-        ImportDocumentsJob::dispatch(
-            $user,
-            $tempPath,
-            $request->input('read_group_ids', []),
-            $request->input('write_group_ids', [])
-        );
+        // Se o arquivo for grande, use a versão otimizada que processa em chunks
+        $fileFullPath = Storage::path($tempPath);
+        $fileSize = file_exists($fileFullPath) ? filesize($fileFullPath) : 0;
+        $largeFileThreshold = 10 * 1024 * 1024; // 10 MB - ajustar conforme necessário
+
+        if ($fileSize >= $largeFileThreshold) {
+            OptimizedImportDocumentsJob::dispatch(
+                $user,
+                $tempPath,
+                $request->input('read_group_ids', []),
+                $request->input('write_group_ids', [])
+            );
+        } else {
+            ImportDocumentsJob::dispatch(
+                $user,
+                $tempPath,
+                $request->input('read_group_ids', []),
+                $request->input('write_group_ids', [])
+            );
+        }
 
         // Usar EnhancedNotificationService diretamente
         $notificationService = app(\App\Services\EnhancedNotificationService::class);

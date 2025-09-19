@@ -10,7 +10,6 @@ use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Foundation\Bus\Dispatchable;
-use MongoDB\BSON\ObjectId;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 
@@ -163,11 +162,11 @@ class OptimizedImportDocumentsJob implements ShouldQueue
     private function processFileDirectly($filePath, $user, $startTime)
     {
         $readGroupIds = collect(array_filter($this->readGroupIds))
-            ->map(fn($id) => new ObjectId($id))
+            ->map(fn($id) => $this->makeObjectId($id))
             ->toArray();
 
         $writeGroupIds = collect(array_filter($this->writeGroupIds))
-            ->map(fn($id) => new ObjectId($id))
+            ->map(fn($id) => $this->makeObjectId($id))
             ->toArray();
 
         $importedCount = 0;
@@ -280,8 +279,8 @@ class OptimizedImportDocumentsJob implements ShouldQueue
             'filename' => $data['filename'],
             'file_extension' => $data['file_extension'] ?? null,
             'mime_type' => $data['mime_type'] ?? null,
-            'upload_date' => isset($data['upload_date']) ? \Carbon\Carbon::parse($data['upload_date']) : \Carbon\Carbon::now(),
-            'uploaded_by' => new ObjectId($user->id),
+            'upload_date' => isset($data['upload_date']) ? $this->toMongoDate($data['upload_date']) : $this->toMongoDate(\Carbon\Carbon::now()),
+            'uploaded_by' => $this->makeObjectId($user->id),
             'status' => $data['status'] ?? 'active',
         ];
 
@@ -352,6 +351,38 @@ class OptimizedImportDocumentsJob implements ShouldQueue
             'skipped' => $skipped,
             'errors' => $errors
         ];
+    }
+
+    /**
+     * Cria um ObjectId dinamicamente (fallback: string)
+     */
+    private function makeObjectId($id)
+    {
+        $class = '\\MongoDB\\BSON\\ObjectId';
+        if (class_exists($class)) {
+            return new $class($id);
+        }
+        return $id;
+    }
+
+    /**
+     * Converte valores para MongoDB\\BSON\\UTCDateTime em UTC (ms epoch)
+     */
+    private function toMongoDate($value)
+    {
+        if ($value instanceof \DateTimeInterface) {
+            $dt = Carbon::instance($value)->utc();
+        } elseif (is_string($value)) {
+            $dt = Carbon::parse($value)->utc();
+        } else {
+            $dt = Carbon::now()->utc();
+        }
+        $utcClass = '\\MongoDB\\BSON\\UTCDateTime';
+        if (class_exists($utcClass)) {
+            $ms = (int) ($dt->getTimestamp() * 1000);
+            return new $utcClass($ms);
+        }
+        return $dt;
     }
 
     private function sendCompletionNotification($importedCount, $skippedCount, $duration)

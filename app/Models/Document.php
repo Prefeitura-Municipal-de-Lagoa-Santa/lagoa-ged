@@ -26,14 +26,15 @@ class Document extends Model
         'file_location',
     ];
 
-    //protected $casts = [
-    //'upload_date' => 'datetime',
-    //    'file_size' => 'integer',
-    //    'metadata' => 'array', // Ou 'object' dependendo de como você quer acessá-lo
-    //    'tags' => 'array',
-    //    'permissions' => 'array', // Ou 'object'
-    //    'file_location' => 'array', // Ou 'object'
-    //];
+    protected $casts = [
+        'upload_date' => 'datetime',
+        'created_at' => 'datetime',
+        'updated_at' => 'datetime',
+        'metadata' => 'array',
+        'tags' => 'array',
+        'permissions' => 'array',
+        'file_location' => 'array',
+    ];
 
     
 
