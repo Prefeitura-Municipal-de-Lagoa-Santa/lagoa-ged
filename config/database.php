@@ -120,23 +120,15 @@ return [
             'username' => env('DB_USERNAME'),
             'password' => env('DB_PASSWORD'),
             'options' => [
-                'database' => env('DB_AUTHENTICATION_DATABASE', 'admin'),
-                'authSource' => env('DB_AUTHENTICATION_DATABASE', 'admin'),
-                // Configurações otimizadas para produção
-                'transactions' => false, // Força o pacote a não tentar rollback
-                'serverSelectionTimeoutMS' => 30000,  // 30 segundos
-                'socketTimeoutMS' => 1800000,          // 30 minutos (aumentado para jobs longos)
-                'connectTimeoutMS' => 30000,           // 30 segundos
-                'maxPoolSize' => 200,                  // Pool maior para produção
-                'minPoolSize' => 5,                    // Pool mínimo
-                'maxIdleTimeMS' => 1800000,            // 30 minutos (aumentado)
-                'waitQueueTimeoutMS' => 30000,         // 30 segundos
-                'heartbeatFrequencyMS' => 10000,       // 10 segundos
+                // Configurações para evitar timeout de sessão
+                'maxPoolSize' => 100,
+                'maxIdleTimeMS' => 900000, // 15 minutos
+                'serverSelectionTimeoutMS' => 30000, // 30 segundos
+                'socketTimeoutMS' => 900000, // 15 minutos
+                'connectTimeoutMS' => 60000, // 1 minuto
+                'heartbeatFrequencyMS' => 10000, // 10 segundos
                 'retryWrites' => true,
                 'retryReads' => true,
-                'w' => 'majority',                     // Write concern para consistência
-                'readPreference' => 'primary',         // Preferência de leitura
-                'readConcern' => ['level' => 'majority'], // Read concern para consistência
             ],
         ],
 
@@ -186,9 +178,6 @@ return [
             'password' => env('REDIS_PASSWORD'),
             'port' => env('REDIS_PORT', '6379'),
             'database' => env('REDIS_DB', '0'),
-            // Timeouts para conexões redis (segundos)
-            'timeout' => env('REDIS_TIMEOUT', 30),
-            'read_timeout' => env('REDIS_READ_TIMEOUT', 60),
         ],
 
         'cache' => [

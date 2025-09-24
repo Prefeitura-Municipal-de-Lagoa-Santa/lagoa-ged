@@ -3,42 +3,42 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-      args:
-        APP_ENV: production
     container_name: lagoa-ged
     restart: unless-stopped
     ports:
+      # Expõe a aplicação na porta 8000
       - "8001:80"
     volumes:
       - .:/var/www/html
       - /dados/PMLS/film:/var/www/html/storage/documentos
     networks:
+      # Conecta à sua rede principal já existente
       - rede_geral_existente
     env_file:
       - .env
       
-  mongodb_prod:
-    image: mongo:latest
-    container_name: lagoa_mongo
-    restart: always
+  mongodb_prod: # Nome do serviço dentro desta stack
+    image: mongo:latest # Use uma tag específica para produção, ex: mongo:6.0.13
+    container_name: lagoa_mongo # MUITO IMPORTANTE: Este nome deve ser o DB_HOST da sua aplicação Laravel
+    restart: always # Garante que o contêiner reinicie com o Docker ou em caso de falha
     ports:
+      # Expõe a aplicação na porta 8000
       - "65017:27017"
     environment:
       MONGO_INITDB_ROOT_USERNAME: ${DB_USERNAME}
       MONGO_INITDB_ROOT_PASSWORD: ${DB_PASSWORD}
-    volumes:
-      # USANDO O VOLUME COM OS DADOS RECUPERADOS
-      - 1a2b404226a906447d3c05931a3910a5250429059d578c61ab025d1336adde31:/data/db
+      #MONGO_INITDB_DATABASE: lagoa_ged_db 
     env_file:
       - .env
     networks:
-      - rede_geral_existente
+      - rede_geral_existente # Conecta à mesma rede que a aplicação Laravel
   
-  redis_prod:
-    image: redis/redis-stack-server:latest
-    container_name: lagoa_redis
-    restart: always
+  redis_prod: # Nome do serviço dentro desta stack
+    image: redis/redis-stack-server:latest # Use uma tag específica para produção, ex: mongo:6.0.13
+    container_name: lagoa_redis # MUITO IMPORTANTE: Este nome deve ser o DB_HOST da sua aplicação Laravel
+    restart: always # Garante que o contêiner reinicie com o Docker ou em caso de falha
     ports:
+      # Expõe a aplicação na porta 8000
       - "6679:6379"
     command: redis-server --requirepass ${REDIS_PASSWORD}
     environment:
@@ -46,8 +46,10 @@ services:
     env_file:
       - .env
     networks:
-      - rede_geral_existente
+      - rede_geral_existente # Conecta à mesma rede que a aplicação Laravel
 
 networks:
   rede_geral_existente:
     external: true
+    # Garanta que este é o nome exato da sua rede externa
+    name: rede_dados_geral
