@@ -6,7 +6,6 @@ use App\Http\Requests\BatchUpdateDocumentPermissionsRequest;
 use App\Http\Requests\ImportDocumentRequest;
 use App\Jobs\BatchUpdateDocumentPermissionsJob;
 use App\Jobs\ImportDocumentsJob;
-use App\Jobs\OptimizedImportDocumentsJob;
 use App\Models\Document;
 use App\Models\Group;
 use App\Models\User;
@@ -303,9 +302,24 @@ class DocumentController extends Controller
             
         } else {
             // Ambiente de produção - acesso direto ao arquivo via fstab mount
-            $fullPath = env('SAMBA_MAPPED_DRIVE_PATH') . $filePath;
+            $basePath = config('filesystems.disks.samba.root', '/var/www/html/storage/documentos/');
+            
+            // Garantir que o basePath termina com /
+            if (!str_ends_with($basePath, '/')) {
+                $basePath .= '/';
+            }
+            
+            $fullPath = $basePath . ltrim($filePath, '/');
             
             if (!file_exists($fullPath)) {
+                // Log para debug em produção
+                \Log::error('Arquivo não encontrado', [
+                    'fullPath' => $fullPath,
+                    'basePath' => $basePath,
+                    'filePath' => $filePath,
+                    'document_id' => $document->id,
+                    'config_samba_root' => config('filesystems.disks.samba.root')
+                ]);
                 abort(404, 'Arquivo não encontrado no compartilhamento.');
             }
             
@@ -421,26 +435,12 @@ class DocumentController extends Controller
         $file = $request->file('csv_file');
         $tempPath = $file->store('imports/tmp');
 
-        // Se o arquivo for grande, use a versão otimizada que processa em chunks
-        $fileFullPath = Storage::path($tempPath);
-        $fileSize = file_exists($fileFullPath) ? filesize($fileFullPath) : 0;
-        $largeFileThreshold = 10 * 1024 * 1024; // 10 MB - ajustar conforme necessário
-
-        if ($fileSize >= $largeFileThreshold) {
-            OptimizedImportDocumentsJob::dispatch(
-                $user,
-                $tempPath,
-                $request->input('read_group_ids', []),
-                $request->input('write_group_ids', [])
-            );
-        } else {
-            ImportDocumentsJob::dispatch(
-                $user,
-                $tempPath,
-                $request->input('read_group_ids', []),
-                $request->input('write_group_ids', [])
-            );
-        }
+        ImportDocumentsJob::dispatch(
+            $user,
+            $tempPath,
+            $request->input('read_group_ids', []),
+            $request->input('write_group_ids', [])
+        );
 
         // Usar EnhancedNotificationService diretamente
         $notificationService = app(\App\Services\EnhancedNotificationService::class);
