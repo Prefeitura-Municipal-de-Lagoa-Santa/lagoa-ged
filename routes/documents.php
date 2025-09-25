@@ -14,7 +14,7 @@ Route::post('/documents/import', [DocumentController::class, 'processImport'])->
 Route::get('/documents/{document}/edit', [DocumentController::class, 'edit'])->name('documents.edit');
 Route::put('/documents/{document}', [DocumentController::class, 'update'])->name('documents.update');
 Route::get('documents/batch-permissions', [DocumentController::class, 'batchPermissions'])->name('documents.batch-permissions');
-Route::post('documents/batch-permissions', [DocumentController::class, 'batchPermissionsUpdate'])->name('documents.batch-permissions');
+Route::post('documents/batch-permissions', [DocumentController::class, 'batchPermissionsUpdate'])->name('documents.batch-permissions-update');
 Route::get('documents/notifications', [DocumentController::class, 'getNotifications'])->name('documents.notifications');
 //Route::put('users/{user}', [UserController::class, 'update'])->name('users.update');
 // Permissões específicas

@@ -302,9 +302,24 @@ class DocumentController extends Controller
             
         } else {
             // Ambiente de produção - acesso direto ao arquivo via fstab mount
-            $fullPath = env('SAMBA_MAPPED_DRIVE_PATH') . $filePath;
+            $basePath = config('filesystems.disks.samba.root', '/var/www/html/storage/documentos/');
+            
+            // Garantir que o basePath termina com /
+            if (!str_ends_with($basePath, '/')) {
+                $basePath .= '/';
+            }
+            
+            $fullPath = $basePath . ltrim($filePath, '/');
             
             if (!file_exists($fullPath)) {
+                // Log para debug em produção
+                \Log::error('Arquivo não encontrado', [
+                    'fullPath' => $fullPath,
+                    'basePath' => $basePath,
+                    'filePath' => $filePath,
+                    'document_id' => $document->id,
+                    'config_samba_root' => config('filesystems.disks.samba.root')
+                ]);
                 abort(404, 'Arquivo não encontrado no compartilhamento.');
             }
             
