@@ -18,7 +18,6 @@ use Log;
 use MongoDB\BSON\ObjectId;
 use MongoDB\BSON\regex;
 use SplFileObject;
-use Storage;
 use Illuminate\Support\Facades\Redis;
 
 class DocumentController extends Controller
@@ -263,79 +262,40 @@ class DocumentController extends Controller
         // Verificar se é um download forçado
         $disposition = $request->has('download') ? 'attachment' : 'inline';
 
-        // Verificar ambiente: desenvolvimento vs produção
-        if (env('APP_ENV') === 'local') {
-            // Ambiente de desenvolvimento - usar Storage disk (Samba)
-            if (!Storage::disk('samba')->exists($filePath)) {
-                abort(404, 'Arquivo não encontrado no compartilhamento.');
-            }
-            
-            // Tentar obter mime type do Storage se não existir no documento
-            if ($document->mime_type === null) {
-                try {
-                    // Para desenvolvimento, usar mime type padrão baseado na extensão
-                    $extension = strtolower(pathinfo($filePath, PATHINFO_EXTENSION));
-                    $mimeTypes = [
-                        'pdf' => 'application/pdf',
-                        'doc' => 'application/msword',
-                        'docx' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-                        'xls' => 'application/vnd.ms-excel',
-                        'xlsx' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-                        'jpg' => 'image/jpeg',
-                        'jpeg' => 'image/jpeg',
-                        'png' => 'image/png',
-                        'gif' => 'image/gif',
-                        'txt' => 'text/plain',
-                    ];
-                    $mimeType = $mimeTypes[$extension] ?? 'application/octet-stream';
-                } catch (\Exception $e) {
-                    $mimeType = 'application/octet-stream';
-                }
-            }
+        // Acesso via caminho montado em disco (unificado para local e produção)
+        $basePath = config('filesystems.disks.samba.root', '/var/www/html/storage/documentos/');
 
-            return response()->stream(function () use ($filePath) {
-                echo Storage::disk('samba')->get($filePath);
-            }, 200, [
-                'Content-Type' => $mimeType,
-                'Content-Disposition' => $disposition . '; filename="' . $fileName . '"',
-            ]);
-            
-        } else {
-            // Ambiente de produção - acesso direto ao arquivo via fstab mount
-            $basePath = config('filesystems.disks.samba.root', '/var/www/html/storage/documentos/');
-            
-            // Garantir que o basePath termina com /
-            if (!str_ends_with($basePath, '/')) {
-                $basePath .= '/';
-            }
-            
-            $fullPath = $basePath . ltrim($filePath, '/');
-            
-            if (!file_exists($fullPath)) {
-                // Log para debug em produção
-                \Log::error('Arquivo não encontrado', [
-                    'fullPath' => $fullPath,
-                    'basePath' => $basePath,
-                    'filePath' => $filePath,
-                    'document_id' => $document->id,
-                    'config_samba_root' => config('filesystems.disks.samba.root')
-                ]);
-                abort(404, 'Arquivo não encontrado no compartilhamento.');
-            }
-            
-            // Obter mime type do arquivo se não existir no documento
-            if ($document->mime_type === null) {
-                $mimeType = mime_content_type($fullPath) ?? 'application/octet-stream';
-            }
-
-            return response()->stream(function () use ($fullPath) {
-                readfile($fullPath);
-            }, 200, [
-                'Content-Type' => $mimeType,
-                'Content-Disposition' => $disposition . '; filename="' . $fileName . '"',
-                'Content-Length' => filesize($fullPath),
-            ]);
+        // Garantir que o basePath termina com /
+        if (!str_ends_with($basePath, '/')) {
+            $basePath .= '/';
         }
+
+        $fullPath = $basePath . ltrim($filePath, '/');
+
+        if (!file_exists($fullPath)) {
+            // Log para debug
+            \Log::error('Arquivo não encontrado', [
+                'fullPath' => $fullPath,
+                'basePath' => $basePath,
+                'filePath' => $filePath,
+                'document_id' => $document->id,
+                'config_samba_root' => config('filesystems.disks.samba.root')
+            ]);
+            abort(404, 'Arquivo não encontrado no compartilhamento.');
+        }
+
+        // Obter mime type do arquivo se não existir no documento
+        if ($document->mime_type === null) {
+            $mimeType = mime_content_type($fullPath) ?? 'application/octet-stream';
+        }
+
+        return response()->stream(function () use ($fullPath) {
+            readfile($fullPath);
+        }, 200, [
+            'Content-Type' => $mimeType,
+            'Content-Disposition' => $disposition . '; filename="' . $fileName . '"',
+            'Content-Length' => filesize($fullPath),
+        ]);
     }
 
     public function show(Document $document)
