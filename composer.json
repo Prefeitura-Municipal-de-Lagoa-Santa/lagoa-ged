@@ -10,6 +10,7 @@
     "license": "MIT",
     "require": {
         "php": "^8.2",
+        "deployer/deployer": "^7.5",
         "directorytree/ldaprecord-laravel": "^3.4",
         "icewind/smb": "^3.7",
         "inertiajs/inertia-laravel": "^2.0",
