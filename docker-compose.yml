@@ -8,6 +8,7 @@ services:
     ports:
       # Expõe a aplicação na porta 8000
       - "8001:80"
+      - "5173:5173" # Vite dev server (HMR)
     volumes:
       - .:/var/www/html
       - /dados/PMLS/film:/var/www/html/storage/documentos

@@ -25,6 +25,16 @@ export default defineConfig({
             },
         }),
     ],
+    // Dev server config for Docker: listen on all interfaces and force HMR to use host accessible from the browser.
+    server: {
+        host: true, // equivalent to 0.0.0.0
+        port: Number(process.env.VITE_PORT || 5173),
+        strictPort: true,
+        hmr: {
+            host: process.env.VITE_HMR_HOST || '127.0.0.1',
+            port: Number(process.env.VITE_PORT || 5173),
+        },
+    },
     resolve: {
         alias: {
             '@': path.resolve(__dirname, './resources/js'),

@@ -70,6 +70,8 @@ return [
             'database' => env('DB_DATABASE', 'laravel'),
             'username' => env('DB_USERNAME', 'root'),
             'password' => env('DB_PASSWORD', ''),
+                // Base auth database (authSource). For root user created by MONGO_INITDB_ROOT_*, this is typically 'admin'
+                'database' => env('DB_AUTH_SOURCE', 'admin'),
             'unix_socket' => env('DB_SOCKET', ''),
             'charset' => env('DB_CHARSET', 'utf8mb4'),
             'collation' => env('DB_COLLATION', 'utf8mb4_unicode_ci'),
@@ -120,6 +122,8 @@ return [
             'username' => env('DB_USERNAME'),
             'password' => env('DB_PASSWORD'),
             'options' => [
+                // Banco onde o usuário está cadastrado para autenticação (padrão: admin)
+                'authSource' => env('DB_AUTH_SOURCE', 'admin'),
                 // Configurações para evitar timeout de sessão
                 'maxPoolSize' => 100,
                 'maxIdleTimeMS' => 900000, // 15 minutos
