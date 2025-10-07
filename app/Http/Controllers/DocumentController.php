@@ -414,6 +414,35 @@ class DocumentController extends Controller
         return redirect()->back();
     }
 
+    /**
+     * Progresso da importação atual para o usuário autenticado (via Redis)
+     */
+    public function importProgress(Request $request)
+    {
+        $user = $request->user();
+        if (!$user) {
+            return response()->json(['success' => false, 'message' => 'Não autenticado'], 401);
+        }
+
+        try {
+            $key = 'import:progress:' . $user->id;
+            $data = Redis::hgetall($key);
+            $imported = isset($data['imported']) ? (int) $data['imported'] : 0;
+            $skipped = isset($data['skipped']) ? (int) $data['skipped'] : 0;
+            $updatedAt = $data['updated_at'] ?? null;
+
+            return response()->json([
+                'success' => true,
+                'imported' => $imported,
+                'skipped' => $skipped,
+                'updated_at' => $updatedAt,
+            ]);
+        } catch (\Exception $e) {
+            \Log::debug('Falha ao ler progresso no Redis', ['error' => $e->getMessage()]);
+            return response()->json(['success' => false, 'message' => 'Progresso indisponível']);
+        }
+    }
+
     public function batchPermissions(Request $request)
     {
         $query = Document::query();

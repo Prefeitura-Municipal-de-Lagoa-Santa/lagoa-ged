@@ -14,6 +14,7 @@ use MongoDB\BSON\ObjectId;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Redis;
 use Illuminate\Support\Facades\DB;
+use MongoDB\BSON\UTCDateTime;
 
 class ImportDocumentsJob implements ShouldQueue
 {
@@ -67,10 +68,11 @@ class ImportDocumentsJob implements ShouldQueue
             ->map(fn($id) => new ObjectId($id))
             ->toArray();
 
-        $importedCount = 0;
-        $skippedCount = 0;
+    $importedCount = 0;
+    $skippedCount = 0;
         $errors = [];
-        $batchSize = 50; // Processar em lotes de 50 documentos
+    // Aumentar o tamanho do lote para reduzir round-trips no banco (configurável via config/app.php IMPORT_BATCH_SIZE)
+    $batchSize = (int) config('app.import_batch_size', 1000);
         $processedInBatch = 0;
 
         try {
@@ -111,18 +113,6 @@ class ImportDocumentsJob implements ShouldQueue
                     continue;
                 }
 
-                // Verificar duplicatas fora da transação para evitar timeout
-                $existingDocument = Document::where('filename', $filename)
-                    ->where('file_location.path', $fileLocationPath)
-                    ->first();
-
-                if ($existingDocument) {
-                    $errors[] = "Documento duplicado ignorado: {$filename} em {$fileLocationPath}";
-                    Log::info("CSV Import Job: Documento duplicado.", ['filename' => $filename]);
-                    $skippedCount++;
-                    continue;
-                }
-
                 // Preparar dados do documento
                 $documentData = $this->prepareDocumentData($data, $user, $readGroupIds, $writeGroupIds);
                 $batch[] = $documentData;
@@ -138,8 +128,8 @@ class ImportDocumentsJob implements ShouldQueue
                     $batch = [];
                     $processedInBatch = 0;
                     
-                    // Pequena pausa para aliviar a carga no banco
-                    usleep(100000); // 0.1 segundo
+                    // Publicar progresso no Redis (opcional)
+                    $this->publishProgress($importedCount, $skippedCount);
                     
                     // Log de progresso
                     Log::info("CSV Import Job: Lote processado. Total importados: {$importedCount}, ignorados: {$skippedCount}");
@@ -152,6 +142,7 @@ class ImportDocumentsJob implements ShouldQueue
                 $importedCount += $batchResult['imported'];
                 $skippedCount += $batchResult['skipped'];
                 $errors = array_merge($errors, $batchResult['errors']);
+                $this->publishProgress($importedCount, $skippedCount);
             }
 
             Storage::delete($this->tempPath);
@@ -196,6 +187,10 @@ class ImportDocumentsJob implements ShouldQueue
      */
     private function prepareDocumentData($data, $user, $readGroupIds, $writeGroupIds)
     {
+        // Normalização de caminho para consistência (igual à view)
+        $rawPath = $data['file_location_path'];
+        $normalizedPath = $this->normalizePath($rawPath);
+
         $documentData = [
             'title' => $data['title'] ?? null,
             'filename' => $data['filename'],
@@ -239,12 +234,31 @@ class ImportDocumentsJob implements ShouldQueue
         ];
 
         $documentData['file_location'] = [
-            'path' => $data['file_location_path'],
+            'path' => $normalizedPath,
             'storage_type' => $data['file_location_storage_type'] ?? 'file_server',
             'bucket_name' => $data['file_location_bucket_name'] ?? null,
         ];
 
+        // Timestamps manuais pois usaremos insertMany no bulk
+        $now = now();
+        $documentData['created_at'] = $now;
+        $documentData['updated_at'] = $now;
+
         return $documentData;
+    }
+
+    private function normalizePath(string $path): string
+    {
+        $p = str_replace('\\', '/', $path);
+        $p = preg_replace('/\.PDF$/', '.pdf', $p);
+        return $p;
+    }
+
+    private function makeKey(array $doc): string
+    {
+        $filename = strtoupper(trim($doc['filename'] ?? ''));
+        $path = strtolower(trim($doc['file_location']['path'] ?? ''));
+        return $filename . '|' . $path;
     }
 
     /**
@@ -256,42 +270,111 @@ class ImportDocumentsJob implements ShouldQueue
         $skipped = 0;
         $errors = [];
 
+        if (empty($batch)) {
+            return [
+                'imported' => 0,
+                'skipped' => 0,
+                'errors' => []
+            ];
+        }
+
+        // Deduplicar itens dentro do próprio lote por (filename, path)
+        $mapByKey = [];
+        foreach ($batch as $doc) {
+            $key = $this->makeKey($doc);
+            // Mantém o primeiro e descarta duplicatas subsequentes
+            if (!isset($mapByKey[$key])) {
+                $mapByKey[$key] = $doc;
+            }
+        }
+
+        $uniqueBatch = array_values($mapByKey);
+
+        // Consultar de uma vez documentos existentes para os pares do lote
+        $pairs = array_map(function ($doc) {
+            return [
+                'filename' => $doc['filename'],
+                'path' => $doc['file_location']['path']
+            ];
+        }, $uniqueBatch);
+
+        $existingKeySet = [];
         try {
-            // Usar transação para garantir consistência
-            DB::transaction(function () use ($batch, &$imported, &$errors) {
-                foreach ($batch as $documentData) {
-                    try {
-                        Document::create($documentData);
-                        $imported++;
-                        Log::info("CSV Import Job: Documento importado - {$documentData['filename']}");
-                    } catch (\Exception $e) {
-                        $errors[] = "Erro ao importar {$documentData['filename']}: " . $e->getMessage();
-                        Log::error("CSV Import Job: Erro ao importar documento", [
-                            'filename' => $documentData['filename'],
-                            'error' => $e->getMessage()
-                        ]);
-                    }
+            // Usa $or com pares filename + path
+            $filter = ['$or' => array_map(function ($p) {
+                return [
+                    'filename' => $p['filename'],
+                    'file_location.path' => $p['path']
+                ];
+            }, $pairs)];
+
+            // Evitar consulta inválida quando não há pares
+            if (empty($filter['$or'])) {
+                $filter = [];
+            }
+
+            Document::raw(function ($collection) use ($filter, &$existingKeySet) {
+                $cursor = $collection->find($filter, [
+                    'projection' => ['filename' => 1, 'file_location.path' => 1]
+                ]);
+                foreach ($cursor as $doc) {
+                    $filename = isset($doc['filename']) ? strtoupper(trim($doc['filename'])) : '';
+                    $path = isset($doc['file_location']['path']) ? strtolower(trim($doc['file_location']['path'])) : '';
+                    $existingKeySet[$filename . '|' . $path] = true;
                 }
             });
         } catch (\Exception $e) {
-            Log::error("CSV Import Job: Erro na transação do lote", [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
+            Log::warning('CSV Import Job: Falha ao consultar duplicatas por lote. Prosseguindo sem filtro prévio.', [
+                'error' => $e->getMessage()
             ]);
-            
-            // Em caso de erro na transação, tentar inserir individualmente
-            foreach ($batch as $documentData) {
+        }
+
+        // Filtrar somente novos
+        $toInsert = [];
+        foreach ($uniqueBatch as $doc) {
+            $key = $this->makeKey($doc);
+            if (!isset($existingKeySet[$key])) {
+                $toInsert[] = $doc;
+            } else {
+                $skipped++;
+            }
+        }
+
+        if (empty($toInsert)) {
+            return [
+                'imported' => 0,
+                'skipped' => $skipped,
+                'errors' => $errors
+            ];
+        }
+
+        // Inserção em massa com ordered=false para acelerar e evitar travar em erros
+        try {
+            Document::raw(function ($collection) use ($toInsert, &$imported) {
+                $result = $collection->insertMany($toInsert, ['ordered' => false]);
+                $imported += $result->getInsertedCount();
+            });
+        } catch (\MongoDB\Driver\Exception\BulkWriteException $e) {
+            // Captura erros de escrita (ex: duplicatas em condição de corrida)
+            $writeResult = $e->getWriteResult();
+            $imported += $writeResult ? $writeResult->getInsertedCount() : 0;
+            $skipped += $writeResult ? count($writeResult->getWriteErrors()) : 0;
+            $errors[] = 'Erros de escrita em lote: ' . $e->getMessage();
+            Log::warning('CSV Import Job: BulkWriteException', [
+                'message' => $e->getMessage()
+            ]);
+        } catch (\Exception $e) {
+            // Fallback: tentar inserir individualmente se o bulk falhar por outro motivo
+            Log::error('CSV Import Job: Falha no insertMany, tentando individualmente.', [
+                'error' => $e->getMessage()
+            ]);
+            foreach ($toInsert as $doc) {
                 try {
-                    Document::create($documentData);
+                    Document::create($doc);
                     $imported++;
-                    Log::info("CSV Import Job: Documento importado (individual) - {$documentData['filename']}");
-                } catch (\Exception $individualError) {
+                } catch (\Exception $e2) {
                     $skipped++;
-                    $errors[] = "Erro ao importar {$documentData['filename']}: " . $individualError->getMessage();
-                    Log::error("CSV Import Job: Erro ao importar documento individual", [
-                        'filename' => $documentData['filename'],
-                        'error' => $individualError->getMessage()
-                    ]);
+                    $errors[] = "Erro ao importar {$doc['filename']}: " . $e2->getMessage();
                 }
             }
         }
@@ -383,6 +466,22 @@ class ImportDocumentsJob implements ShouldQueue
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
             ]);
+        }
+    }
+
+    private function publishProgress(int $imported, int $skipped): void
+    {
+        try {
+            $key = 'import:progress:' . $this->user->id;
+            Redis::hmset($key, [
+                'imported' => $imported,
+                'skipped' => $skipped,
+                'updated_at' => now()->toISOString(),
+            ]);
+            // Expirar em 1 hora
+            Redis::expire($key, 3600);
+        } catch (\Exception $e) {
+            Log::debug('Falha ao publicar progresso no Redis', ['error' => $e->getMessage()]);
         }
     }
 }

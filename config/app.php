@@ -14,6 +14,9 @@ return [
     */
 
     'name' => env('APP_NAME', 'Laravel'),
+    // Tamanho do lote para importação de documentos (pode ser ajustado via .env)
+    'import_batch_size' => env('IMPORT_BATCH_SIZE', 1000),
+
 
     /*
     |--------------------------------------------------------------------------
