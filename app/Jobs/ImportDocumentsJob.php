@@ -196,7 +196,9 @@ class ImportDocumentsJob implements ShouldQueue
             'filename' => $data['filename'],
             'file_extension' => $data['file_extension'] ?? null,
             'mime_type' => $data['mime_type'] ?? null,
-            'upload_date' => isset($data['upload_date']) ? \Carbon\Carbon::parse($data['upload_date']) : \Carbon\Carbon::now(),
+            'upload_date' => isset($data['upload_date']) 
+                ? new \MongoDB\BSON\UTCDateTime(\Carbon\Carbon::parse($data['upload_date'])->timestamp * 1000)
+                : new \MongoDB\BSON\UTCDateTime(\Carbon\Carbon::now()->timestamp * 1000),
             'uploaded_by' => new ObjectId($user->id),
             'status' => $data['status'] ?? 'active',
         ];
@@ -241,8 +243,8 @@ class ImportDocumentsJob implements ShouldQueue
 
         // Timestamps manuais pois usaremos insertMany no bulk
         $now = now();
-        $documentData['created_at'] = $now;
-        $documentData['updated_at'] = $now;
+        $documentData['created_at'] = new \MongoDB\BSON\UTCDateTime($now->timestamp * 1000);
+        $documentData['updated_at'] = new \MongoDB\BSON\UTCDateTime($now->timestamp * 1000);
 
         return $documentData;
     }

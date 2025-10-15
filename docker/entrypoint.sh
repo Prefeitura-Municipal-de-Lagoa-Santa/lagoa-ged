@@ -11,16 +11,14 @@ mkdir -p /var/www/html/storage/framework/cache
 mkdir -p /var/www/html/storage/framework/sessions
 mkdir -p /var/www/html/storage/framework/views
 mkdir -p /var/www/html/storage/logs
+mkdir -p /var/www/html/storage/app/private
+mkdir -p /var/www/html/storage/app/public
 mkdir -p /var/www/html/bootstrap/cache
 
 # Ajusta permissões para o usuário do PHP-FPM (www-data)
-# Tenta ajustar ownership; se não for possível (volume host), abre permissões como fallback.
-if chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache 2>/dev/null; then
-	chmod -R ug+rwX /var/www/html/storage /var/www/html/bootstrap/cache || true
-else
-	echo "Ownership change failed (likely host volume). Applying permissive chmod on storage and cache."
-	chmod -R 777 /var/www/html/storage /var/www/html/bootstrap/cache || true
-fi
+# Nota: Não altera permissões da pasta documentos (montada de outro servidor)
+chown -R www-data:www-data /var/www/html/storage/framework /var/www/html/storage/logs /var/www/html/storage/app /var/www/html/bootstrap/cache 2>/dev/null || true
+chmod -R ug+rwX /var/www/html/storage/framework /var/www/html/storage/logs /var/www/html/storage/app /var/www/html/bootstrap/cache || true
 
 # Instala as dependências do Composer sem rodar scripts (evita package:discover durante o startup)
 composer install --no-interaction --optimize-autoloader --no-dev --no-scripts

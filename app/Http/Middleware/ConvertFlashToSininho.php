@@ -66,16 +66,27 @@ class ConvertFlashToSininho
             return $response;
         }
         
+        $flashMessages = [];
+        foreach ($flashTypes as $type) {
+            if (Session::has($type)) {
+                $value = Session::get($type);
+                // Garantir que apenas strings sejam logadas
+                $flashMessages[$type] = is_string($value) ? $value : gettype($value);
+            }
+        }
+        
         \Log::info('ConvertFlashToSininho: Mensagens flash encontradas', [
-            'session_flash' => array_filter(Session::all(), function($key) {
-                return in_array($key, ['success', 'error', 'warning', 'info', 'message']);
-            }, ARRAY_FILTER_USE_KEY)
+            'session_flash' => $flashMessages
         ]);
         
         // Capturar mensagens flash comuns
         foreach ($flashTypes as $type) {
             if (Session::has($type)) {
                 $message = Session::get($type);
+                // Ignorar se não for string
+                if (!is_string($message) || empty($message)) {
+                    continue;
+                }
                 if (!empty($message)) {
                     // Verificar se já existe uma notificação similar recente (últimos 10 segundos)
                     $existingNotification = \App\Models\Notification::forUser($user->id)

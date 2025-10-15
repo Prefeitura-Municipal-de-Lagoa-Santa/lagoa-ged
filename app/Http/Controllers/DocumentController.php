@@ -144,6 +144,14 @@ class DocumentController extends Controller
             'per_page',
         ]);
 
+        // Sanitizar filtros para garantir que sejam strings
+        $filters = array_map(function($value) {
+            if (is_array($value) || is_object($value)) {
+                return null;
+            }
+            return $value;
+        }, $filters);
+
         // **CORREÇÃO para LogicException e Potencialmente para TypeError:**
         // Escapar caracteres especiais para regex e agrupar filtros principais em um único 'where' closure
         $query->where(function ($q) use ($filters) {
@@ -395,12 +403,21 @@ class DocumentController extends Controller
         $file = $request->file('csv_file');
         $tempPath = $file->store('imports/tmp');
 
+        \Log::info('Tentando despachar job de importação', [
+            'user_id' => $user->id,
+            'tempPath' => $tempPath,
+            'read_groups' => $request->input('read_group_ids', []),
+            'write_groups' => $request->input('write_group_ids', [])
+        ]);
+
         ImportDocumentsJob::dispatch(
             $user,
             $tempPath,
             $request->input('read_group_ids', []),
             $request->input('write_group_ids', [])
         );
+
+        \Log::info('Job de importação despachado com sucesso', ['tempPath' => $tempPath]);
 
         // Usar EnhancedNotificationService diretamente
         $notificationService = app(\App\Services\EnhancedNotificationService::class);
