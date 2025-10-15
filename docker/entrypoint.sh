@@ -6,10 +6,12 @@ set -e
 mkdir -p /run/php
 
 # Garante que as pastas necessárias do Laravel existem
-mkdir -p \
-	/var/www/html/storage/framework/{cache,sessions,views} \
-	/var/www/html/storage/logs \
-	/var/www/html/bootstrap/cache
+# Nota: /bin/sh não suporta expansão de chaves, então criamos individualmente
+mkdir -p /var/www/html/storage/framework/cache
+mkdir -p /var/www/html/storage/framework/sessions
+mkdir -p /var/www/html/storage/framework/views
+mkdir -p /var/www/html/storage/logs
+mkdir -p /var/www/html/bootstrap/cache
 
 # Ajusta permissões para o usuário do PHP-FPM (www-data)
 # Tenta ajustar ownership; se não for possível (volume host), abre permissões como fallback.

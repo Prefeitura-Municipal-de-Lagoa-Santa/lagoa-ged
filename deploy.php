@@ -146,7 +146,8 @@ desc('Cachear configurações Laravel');
 task('artisan:cache', function () {
     run('cd $(readlink -f {{deploy_path}}/current) && docker compose --project-name {{docker_project_name}} exec -T app php artisan config:cache');
     run('cd $(readlink -f {{deploy_path}}/current) && docker compose --project-name {{docker_project_name}} exec -T app php artisan route:cache');
-    run('cd $(readlink -f {{deploy_path}}/current) && docker compose --project-name {{docker_project_name}} exec -T app php artisan view:cache');
+    // view:cache removido - causa erro "View path not found" com storage symlink
+    // As views serão compiladas on-demand durante o primeiro acesso
 });
 
 desc('Corrigir permissões de escrita');
@@ -218,7 +219,7 @@ task('maintenance:off', function () {
     run('[ -L {{deploy_path}}/current ] && cd $(readlink -f {{deploy_path}}/current) && docker compose --project-name {{docker_project_name}} exec -T app php artisan up || true');
     run('cd $(readlink -f {{deploy_path}}/current) && docker compose --project-name {{docker_project_name}} exec -T app php artisan config:cache');
     run('cd $(readlink -f {{deploy_path}}/current) && docker compose --project-name {{docker_project_name}} exec -T app php artisan route:cache');
-    run('cd $(readlink -f {{deploy_path}}/current) && docker compose --project-name {{docker_project_name}} exec -T app php artisan view:cache');
+    // view:cache removido - causa erro "View path not found" com storage symlink
 });
 // ==========================================
 // FLUXO DE DEPLOY PRINCIPAL
