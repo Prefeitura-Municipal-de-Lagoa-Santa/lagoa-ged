@@ -11,6 +11,8 @@ class Document extends Model
 {
     use HasFactory, SoftDeletes; // Use SoftDeletes se necessário
 
+    public $timestamps = true; // Manter timestamps mas vamos controlar manualmente nos jobs
+
     protected $fillable = [
         'title',
         'filename',
@@ -24,15 +26,18 @@ class Document extends Model
         'status',
         'permissions',
         'file_location',
+        'created_at',
+        'updated_at',
     ];
 
     //protected $casts = [
-    //'upload_date' => 'datetime',
-    //    'file_size' => 'integer',
-    //    'metadata' => 'array', // Ou 'object' dependendo de como você quer acessá-lo
+    //    'upload_date' => 'datetime',
+    //    'created_at' => 'datetime',
+    //    'updated_at' => 'datetime',
+    //    'metadata' => 'array',
     //    'tags' => 'array',
-    //    'permissions' => 'array', // Ou 'object'
-    //    'file_location' => 'array', // Ou 'object'
+    //    'permissions' => 'array',
+    //    'file_location' => 'array',
     //];
 
     
