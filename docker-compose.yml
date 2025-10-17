@@ -57,9 +57,10 @@ services:
 volumes:
   mongodb_data:
     external: true
-    name: mongodb_data_restored
+    name: gestaodocumentos_mongodb_data
   mongodb_config:
-    driver: local
+    external: true
+    name: gestaodocumentos_mongodb_config
   redis_data:
     driver: local
 

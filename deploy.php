@@ -150,6 +150,12 @@ task('artisan:cache', function () {
     // As views serão compiladas on-demand durante o primeiro acesso
 });
 
+desc('Reiniciar queue worker');
+task('queue:restart', function () {
+    run('cd $(readlink -f {{deploy_path}}/current) && docker compose --project-name {{docker_project_name}} exec -T app supervisorctl restart queue-worker || true');
+    info('🔄 Queue worker reiniciado para aplicar alterações no código.');
+});
+
 desc('Corrigir permissões de escrita');
 task('permissions:fix', function () {
     $dirs = [
@@ -237,6 +243,7 @@ task('deploy', [
     'docker:up',
     'docker:wait',    
     'artisan:cache',
+    'queue:restart',
     'deploy:cleanup',
 ])->desc('Fluxo de deploy completo');
 
@@ -267,6 +274,7 @@ task('deploy:quick', [
     'docker:up',
     'docker:wait',
     'artisan:cache',
+    'queue:restart',
     'deploy:success',
     'deploy:cleanup',
 ])->desc('Deploy rápido (sem rebuild de imagem/assets)');
