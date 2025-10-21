@@ -18,8 +18,11 @@ class DashboardController extends Controller
         // Tipos de documentos que compõem ADLP
         $tiposADLP = ['DECRETO', 'ATO', 'LEI', 'PORTARIA'];
 
+        // Tipos de documentos que compõem Pagamentos Orçamentários
+        $tiposPagamentosOrcamentarios = ['EMPENHO', 'ORDEM DE PAGAMENTO'];
+
         // Agregação para contagem por tipo de documento E para somar ADLP
-        $aggregationResult = Document::raw(function($collection) use ($tiposADLP) {
+        $aggregationResult = Document::raw(function($collection) use ($tiposADLP, $tiposPagamentosOrcamentarios) {
             return $collection->aggregate([
                 // Primeiro, agrupa por tipo de documento para obter as contagens individuais
                 [
@@ -54,7 +57,23 @@ class DashboardController extends Controller
                                     'total' => ['$sum' => '$count']
                                 ]
                             ]
+                        ],
+                        'pagamentosOrcamentariosTotal' => [
+                            [
+                                // Filtra apenas os tipos de Pagamentos Orçamentários
+                                '$match' => [
+                                    '_id' => ['$in' => $tiposPagamentosOrcamentarios]
+                                ]
+                            ],
+                            [
+                                // Soma as contagens dos tipos de Pagamentos Orçamentários
+                                '$group' => [
+                                    '_id' => null,
+                                    'total' => ['$sum' => '$count']
+                                ]
+                            ]
                         ]
+
                     ]
                 ]
             ]);
@@ -78,11 +97,19 @@ class DashboardController extends Controller
         if (!empty($aggregationResult[0]['adlpTotal'])) {
             $totalADLP = $aggregationResult[0]['adlpTotal'][0]['total'] ?? 0;
         }
+
+        // Processa o total de Pagamentos Orçamentários
+        $totalPagamentosOrcamentarios = 0;
+        if (!empty($aggregationResult[0]['pagamentosOrcamentariosTotal'])) {
+            $totalPagamentosOrcamentarios = $aggregationResult[0]['pagamentosOrcamentariosTotal'][0]['total'] ?? 0;
+        }
+
         return Inertia::render('Dashboard', [
             'user' => $user, // Passa o usuário logado
             'groups' => $groups, // Passa os grupos disponíveis
             'documents' => $finalDocumentCounts,
             'totalADLP' => $totalADLP, // Passa a soma de ADLP separadamente
+            'totalPagamentosOrcamentarios' => $totalPagamentosOrcamentarios, // Passa a soma de Pagamentos Orçamentários
         ]);
     }
 }
