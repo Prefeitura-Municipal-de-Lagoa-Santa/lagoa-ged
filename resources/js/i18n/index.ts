@@ -70,6 +70,7 @@ const messages = {
       subunit_number: 'Número da Subunidade',
       subunit: 'Subunidade',
       resource_source_number: 'Número da Fonte de Recurso',
+      resource_number: 'Número da Fonte de Recurso',
       resource_source: 'Fonte de Recurso',
       supplier: 'Fornecedor',
       supplier_number: 'Número do Fornecedor',
@@ -79,8 +80,15 @@ const messages = {
       bidding_year: 'Ano da Licitação',
       purchasing_process: 'Processo de Compra',
       bank: 'Banco',
-      account: 'Conta',      
-      
+      account: 'Conta',
+      payment_order_date: 'Data do Pedido de Pagamento',
+      gross_value: 'Valor Bruto',
+      discount: 'Desconto',
+      net_value: 'Valor Líquido',
+      net_value: 'Valor Líquido',
+      expense_number: 'Número da Despesa',
+      expense: 'Despesa',
+
       // Campos de RH
       employee: 'Funcionário',
       position: 'Cargo',
