@@ -14,6 +14,10 @@ const props = defineProps({
         type: Number,
         default: 0,
     },
+    totalPagamentosOrcamentarios: { // Nova prop para o total de Pagamentos Orçamentários
+        type: Number,
+        default: 0,
+    },
     user: {
         type: Object,
         required: true, // Certifique-se de que o usuário é passado corretamente
@@ -247,7 +251,7 @@ const canSeePagamentosCard = computed(() => {
                     </div>
                 </Link>
 
-                <Link v-if="canSeePagamentosCard" :href="route('documents.index', { other_metadata: 'EMPENHO' })"
+                <Link v-if="canSeePagamentosCard" :href="route('documents.index', { tags: 'PAGAMENTOS ORCAMENTARIOS' })"
                     class="group relative overflow-hidden bg-gradient-to-br from-teal-600 to-cyan-700 hover:from-teal-700 hover:to-cyan-800 rounded-2xl p-6 transition-all duration-300 hover:scale-[1.02] hover:shadow-2xl hover:shadow-teal-500/25">
                     
                     <!-- Background Pattern -->
@@ -261,7 +265,7 @@ const canSeePagamentosCard = computed(() => {
                                 <CircleDollarSign class="w-8 h-8 text-white drop-shadow-lg" strokeWidth={2.5} />
                             </div>
                             <div class="text-right">
-                                <div class="text-3xl font-bold text-white drop-shadow-md">{{ documents['EMPENHO'] || 0 }}</div>
+                                <div class="text-3xl font-bold text-white drop-shadow-md">{{ props.totalPagamentosOrcamentarios }}</div>
                                 <div class="text-teal-100 text-sm">documentos</div>
                             </div>
                         </div>
